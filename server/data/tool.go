@@ -10,14 +10,15 @@ import (
 	"log"
 	"os"
 
-	"cloud.google.com/go/firestore"
 	"github.com/seaptc/server/data"
+	"github.com/seaptc/server/datastore"
 )
 
 func main() {
-	projectID := flag.String("project", "seaptc", "")
+	log.SetFlags(0)
+	datastore.SetupFlags()
 	flag.Parse()
-	client, err := firestore.NewClient(context.Background(), *projectID)
+	client, err := datastore.NewFromFlags(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -27,7 +28,7 @@ func main() {
 	switch flag.Arg(0) {
 	case "config-get":
 		var config data.AppConfig
-		if err := data.GetDocTo(ctx, client, data.AppConfigPath, &config); err != nil {
+		if err := client.GetDocTo(ctx, data.AppConfigPath, &config); err != nil {
 			log.Fatal(err)
 		}
 		p, _ := json.MarshalIndent(&config, "", "  ")
@@ -41,6 +42,6 @@ func main() {
 			log.Fatal(err)
 		}
 	default:
-		log.Fatalf("Unknown command %q", flag.Arg(0))
+		log.Fatalf("Unknown command %q, commands are config-get, config-set", flag.Arg(0))
 	}
 }

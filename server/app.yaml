@@ -1,0 +1,11 @@
+runtime: go112
+default_expiration: "4d"
+main: ./seaptc
+
+handlers:
+- url: /static
+  static_dir: assets/static
+
+- url: /.*
+  secure: always
+  script: auto

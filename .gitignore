@@ -3,4 +3,5 @@
 .vscode/launch.json
 client/node_modules
 client/dist
+server/seaptc/seaptc
 

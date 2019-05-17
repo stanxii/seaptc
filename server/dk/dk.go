@@ -13,6 +13,8 @@ import (
 	"github.com/seaptc/server/data"
 )
 
+const oaClassNumber = 700
+
 var (
 	unitNumberPat      = regexp.MustCompile(`(\d+)`)
 	classNumberPattern = regexp.MustCompile(`^(\d\d\d):`)
@@ -54,15 +56,20 @@ var setters = []struct {
 	{"Staff role", func(p *participant, s string) { p.StaffRole = s }},
 	{"How many years have you been in scouting?", func(p *participant, s string) { p.ScoutingYears = s }},
 	{"Print QR code on PTC name badge?", func(p *participant, s string) { p.ShowQRCode = s == "Yes" }},
+
+	// addDietaryRestriction assumes that Vegan is parsed before Vegetarian.
 	{"Do you have any meal requirements?:Vegan", addDietaryRestriction}, // addDietaryRestriction requires Vegan before Vegetarian
 	{"Do you have any meal requirements?:Vegetarian", addDietaryRestriction},
 	{"Do you have any meal requirements?:Gluten Free", addDietaryRestriction},
+
+	// Downstream code assumes that Other is last marketing option.
 	{"How did you hear about the PTC?:Roundtable/District", addMarketing},
 	{"How did you hear about the PTC?:eTotem", addMarketing},
 	{"How did you hear about the PTC?:Council website", addMarketing},
 	{"How did you hear about the PTC?:Attended before", addMarketing},
 	{"How did you hear about the PTC?:Wood Badge", addMarketing},
 	//XXX {"How did you hear about the PTC?:Other", addMarketing},
+
 	{"Which classes are you teaching?", func(r *participant, s string) { r.instructorDescription = s }},
 	{"Which organization are you representing on the midway?", func(r *participant, s string) { r.midwayDescription = s }},
 }
@@ -86,7 +93,7 @@ func addMarketing(p *participant, s string) {
 	}
 	if p.Marketing == "" {
 		p.Marketing = s
-        return
+		return
 	}
 	p.Marketing = p.Marketing + "; " + strings.Replace(s, ";", " ", -1)
 }
@@ -141,7 +148,11 @@ func ParseCSV(rd io.Reader) ([]*data.Participant, error) {
 				return nil, errors.New("dk: found class row before PTC row")
 			}
 			n, _ := strconv.Atoi(m[1])
-			p.Classes = append(p.Classes, n)
+			if n == oaClassNumber {
+				p.OABanquet = true
+			} else {
+				p.Classes = append(p.Classes, n)
+			}
 		} else if !strings.HasSuffix(event, "Program and Training Conference") {
 			return nil, errors.New("dk: event not XXX: or PTC")
 		} else {

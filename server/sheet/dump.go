@@ -9,21 +9,21 @@ import (
 	"log"
 	"os"
 
-	"cloud.google.com/go/firestore"
 	"github.com/seaptc/server/data"
+	"github.com/seaptc/server/datastore"
 	"github.com/seaptc/server/sheet"
 )
 
 func main() {
 	log.SetFlags(0)
-	projectID := flag.String("project", "seaptc", "")
+	datastore.SetupFlags()
 	flag.Parse()
-	fs, err := firestore.NewClient(context.Background(), *projectID)
+	ds, err := datastore.NewFromFlags(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
 	var config data.AppConfig
-	if err := data.GetDocTo(context.Background(), fs, data.AppConfigPath, &config); err != nil {
+	if err := ds.GetDocTo(context.Background(), data.AppConfigPath, &config); err != nil {
 		log.Fatal(err)
 	}
 	classes, err := sheet.Fetch(context.Background(), &config)

@@ -5,32 +5,6 @@ import (
 	"strconv"
 )
 
-const (
-	CubScoutProgram = 1 << iota
-	ScoutsBSAProgram
-	VenturingProgram
-	SeaScoutProgram
-	CommissionerProgram
-	YouthProgram
-	AllProgram = CubScoutProgram | ScoutsBSAProgram | VenturingProgram | SeaScoutProgram | CommissionerProgram | YouthProgram
-)
-
-type ProgramInfo struct {
-	mask int
-	Name string
-	Slug string
-}
-
-var ProgramInfos = []*ProgramInfo{
-	{CubScoutProgram, "Cub Pack adults", "cub"},
-	{ScoutsBSAProgram, "Scout Troop adults", "bsa"},
-	{VenturingProgram, "Venture Crew adults", "ven"},
-	{SeaScoutProgram, "Sea Scout adults", "sea"},
-	{CommissionerProgram, "Commissioners", "com"},
-	{YouthProgram, "Youth", "you"},
-	{AllProgram, "Everyone", "all"}, // All must be last in slice for Class.ReverseProgramInfos.
-}
-
 // Class represents a PTC class.
 //
 // The dk tag marks fields that contribute to the Doubleknot session event
@@ -53,8 +27,8 @@ type Class struct {
 	EvaluationCodes  []string `json:"evaluationCodes" firestore:"evaluationCodes" merge:"Sheet"`
 	AccessToken      string   `json:"accessToken" firestore:"accessToken" merge:"Sheet"`
 
-	// DKDirty is set to true when the class needs updating on Doubleknot.
-	DKDirty bool `json:"-" firestore:"dkDirty"`
+	// DKHash is the hash of the fields last set on the Doubleknot session event description.
+	DKHash bool `json:"dkHash" firestore:"dkHash"`
 }
 
 // DocName returns the document name for Firestore
@@ -89,19 +63,53 @@ func (c *Class) PartOfLength(format string, session int) string {
 	return fmt.Sprintf(format, session-c.Start()+1, c.Length)
 }
 
-func (c *Class) ReverseProgramInfos() []*ProgramInfo {
+const (
+	CubScoutProgram = 1 << iota
+	ScoutsBSAProgram
+	VenturingProgram
+	SeaScoutProgram
+	CommissionerProgram
+	YouthProgram
+	AllProgram = CubScoutProgram | ScoutsBSAProgram | VenturingProgram | SeaScoutProgram | CommissionerProgram | YouthProgram
+)
+
+type ProgramDescription struct {
+	mask int
+	Slug string
+	Name string
+}
+
+var ProgramDescriptions = []*ProgramDescription{
+	{CubScoutProgram, "cub", "Cub Pack adults"},
+	{ScoutsBSAProgram, "bsa", "Scout Troop adults"},
+	{VenturingProgram, "ven", "Venture Crew adults"},
+	{SeaScoutProgram, "sea", "Sea Scout adults"},
+	{CommissionerProgram, "com", "Commissioners"},
+	{YouthProgram, "you", "Youth"},
+
+	// AllProgram must be last in slice for ReverseProgramInfos()
+	{AllProgram, "all", "Everyone"},
+}
+
+func (c *Class) ProgramDescriptions() []*ProgramDescription {
 	// AllProgram is at end of slice.
 	if c.Programs == AllProgram {
-		return ProgramInfos[len(ProgramInfos)-1:]
+		return ProgramDescriptions[len(ProgramDescriptions)-1:]
 	}
 
-	var result []*ProgramInfo
+	var result []*ProgramDescription
 
 	// Don't include AllProgram located at end of ProgramInfos slice.
-	for i := len(ProgramInfos) - 2; i >= 0; i-- {
-		if c.Programs&ProgramInfos[i].mask != 0 {
-			result = append(result, ProgramInfos[i])
+	// Return in reverse order for convenient layout of images in HTML.
+	for i := len(ProgramDescriptions) - 2; i >= 0; i-- {
+		if c.Programs&ProgramDescriptions[i].mask != 0 {
+			result = append(result, ProgramDescriptions[i])
 		}
 	}
 	return result
+}
+
+type Classes struct {
+	Slice []*Class       // Sorted by class number
+	Map   map[int]*Class // Key is class number
 }

@@ -5,6 +5,7 @@ type AppConfig struct {
 	XSRFKey  string   `json:"xsrfKey" firestore:"xsrfKey"`
 	HMACKeys []string `json:"hmacKeys" firestore:"hmacKeys"`
 	AdminIDs []string `json:"adminIDs" firestore:"adminIDs"`
+	StaffIDs []string `json:"staffIDs" firestore:"staffIDs"`
 
 	// Google Open ID for login
 	LoginClient struct {

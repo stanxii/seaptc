@@ -166,6 +166,14 @@ func parseSheet(r io.Reader) ([]*data.Class, error) {
 				return nil, fmt.Errorf("sheet (%d, %s): %v", i, s.name, err)
 			}
 		}
+        if c.Number == 700 {
+            // Ignore OA banquet
+            continue
+        }
+		start, end := c.StartEnd()
+		if start >= data.NumSession || end >= data.NumSession {
+			return nil, fmt.Errorf("class %d has bad number or length (%d)", c.Number, c.Length)
+		}
 		result = append(result, &c.Class)
 	}
 	return result, nil

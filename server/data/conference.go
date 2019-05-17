@@ -1,9 +1,11 @@
 package data
 
 import (
+	"strconv"
 	"sync"
-	"time"
 )
+
+//go:generate go run gogen.go -output fields.go
 
 type Lunch struct {
 	Name     string `json:"name" firestore:"name"`
@@ -14,18 +16,38 @@ type Lunch struct {
 
 	// If participant is taking one of these classes then
 	//  pick up lunch here
-	// else if particpant is in one of these unit types then
+	// else if participant is in one of these unit types then
 	//  pick up lunch here
 	// else
 	//  pick up lunch at general
+	//
+	// Unit types are from registration: Pack, Troop, Crew, Ship
+	//
 	Clases    []int    `json:"classes" firestore:"classes"`
 	UnitTypes []string `json:"unitTypes" firestore:"unitTypes"`
 }
 
+/*
+type Session struct {
+    StartHour int `json:"startHour" firstore:"startHour"`
+    StartHour int `json:"startHour" firstore:"startHour"`
+    StartMinute int `json:"StartMinute" firstore:"startMinute"`
+    EndHour int `json:"endHour" firstore:"endHour"`
+    EndMinute int `json:"endMinute" firstore:"endMinute"`
+    Lunch bool `json:"lunch" firstore:"lunch"`
+}
+*/
+
+const NumSession = 6
+
 type Conference struct {
 	// First lunch is default choice
-	Lunches []*Lunch  `json:"lunches" firestore:"lunches"`
-	Date    time.Time `json:"date" firstore:"date"`
+	Lunches []*Lunch `json:"lunches" firestore:"lunches"`
+	//Sessions []*Session  `json:"sessions" firestore:"sessions"`
+
+	Year  int `json:"year" firestore:"year"`
+	Month int `json:"month" firestore:"month"`
+	Day   int `json:"day" firstore":"day"`
 
 	lunch struct {
 		once       sync.Once
@@ -35,26 +57,6 @@ type Conference struct {
 	}
 }
 
-func (c *Conference) LookupLunch(p *Participant) *Lunch {
-	c.lunch.once.Do(func() {
-		c.lunch.byClass = make(map[int]*Lunch)
-		c.lunch.byUnitType = make(map[string]*Lunch)
-		for _, l := range c.Lunches {
-			for _, n := range p.Classes {
-				c.lunch.byClass[n] = l
-			}
-			for _, unitType := range l.UnitTypes {
-				c.lunch.byUnitType[unitType] = l
-			}
-		}
-	})
-	for _, class := range p.Classes {
-		if l, ok := c.lunch.byClass[class]; ok {
-			return l
-		}
-	}
-	if l, ok := c.lunch.byUnitType[p.UnitType]; ok {
-		return l
-	}
-	return c.Lunches[0]
+func (c *Conference) DocName() string {
+	return strconv.Itoa(c.Year)
 }
