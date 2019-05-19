@@ -2,7 +2,6 @@ package data
 
 import (
 	"fmt"
-	"strconv"
 )
 
 // Class represents a PTC class.
@@ -11,28 +10,25 @@ import (
 // definition. The nosheet tag marks fields that should not be copied from the
 // planning spreadsheet.
 type Class struct {
-	Number           int      `json:"number" firestore:"number" merge:"Sheet"`
-	Length           int      `json:"length" firestore:"length" merge:"Sheet"`
-	Responsibility   string   `json:"responsibility"  firestore:"responsibility" merge:"Sheet"`
-	New              string   `json:"new" firestore:"new" merge:"Sheet"`
-	Title            string   `json:"title" firestore:"title" merge:"Sheet"`
-	TitleNotes       string   `json:"titleNotes" firestore:"titleNotes" merge:"Sheet"`
-	Description      string   `json:"description" firestore:"description" merge:"Sheet"`
-	Programs         int      `json:"programs" firestore:"programs" merge:"Sheet"`
-	Capacity         int      `json:"capacity" firestore:"capacity" merge:"Sheet"`
-	Location         string   `json:"location" firestore:"location" merge:"Sheet"`
-	SpreadsheetRow   int      `json:"-" firestore:"spreadsheetRow" merge:"Sheet"`
-	InstructorNames  []string `json:"instructorNames" firestore:"instructorNames" merge:"Sheet"`
-	InstructorEmails []string `json:"instructorEmails" firestore:"instructorEmails" merge:"Sheet"`
-	EvaluationCodes  []string `json:"evaluationCodes" firestore:"evaluationCodes" merge:"Sheet"`
-	AccessToken      string   `json:"accessToken" firestore:"accessToken" merge:"Sheet"`
+	Number           int      `json:"number" firestore:"number" fields:"Sheet"`
+	Length           int      `json:"length" firestore:"length" fields:"Sheet"`
+	Responsibility   string   `json:"responsibility"  firestore:"responsibility" fields:"Sheet"`
+	New              string   `json:"new" firestore:"new" fields:"Sheet"`
+	Title            string   `json:"title" firestore:"title" fields:"Sheet"`
+	TitleNotes       string   `json:"titleNotes" firestore:"titleNotes" fields:"Sheet"`
+	Description      string   `json:"description" firestore:"description" fields:"Sheet"`
+	Programs         int      `json:"programs" firestore:"programs" fields:"Sheet"`
+	Capacity         int      `json:"capacity" firestore:"capacity" fields:"Sheet"`
+	Location         string   `json:"location" firestore:"location" fields:"Sheet"`
+	SpreadsheetRow   int      `json:"-" firestore:"spreadsheetRow" fields:"Sheet"`
+	InstructorNames  []string `json:"instructorNames" firestore:"instructorNames" fields:"Sheet"`
+	InstructorEmails []string `json:"instructorEmails" firestore:"instructorEmails" fields:"Sheet"`
+	EvaluationCodes  []string `json:"evaluationCodes" firestore:"evaluationCodes" fields:"Sheet"`
+	AccessToken      string   `json:"accessToken" firestore:"accessToken" fields:"Sheet"`
 
 	// DKHash is the hash of the fields last set on the Doubleknot session event description.
 	DKHash bool `json:"dkHash" firestore:"dkHash"`
 }
-
-// DocName returns the document name for Firestore
-func (c *Class) DocName() string { return strconv.Itoa(c.Number) }
 
 // Start returns zero based index of the starting session.
 func (c *Class) Start() int { return int(c.Number/100) - 1 }
@@ -107,9 +103,4 @@ func (c *Class) ProgramDescriptions() []*ProgramDescription {
 		}
 	}
 	return result
-}
-
-type Classes struct {
-	Slice []*Class       // Sorted by class number
-	Map   map[int]*Class // Key is class number
 }

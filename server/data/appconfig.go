@@ -17,5 +17,3 @@ type AppConfig struct {
 	PlanningSheetURL               string `json:"planningSheetURL" firestore:"planningSheetURL"`
 	PlanningSheetServiceAccountKey string `json:"planningSheetServiceAccountKey" firestore:"planningSheetServiceAccountKey"`
 }
-
-const AppConfigPath = "misc/appconfig"

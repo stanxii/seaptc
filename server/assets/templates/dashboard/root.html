@@ -27,7 +27,7 @@
       <a class="nav-item btn btn-outline-secondary" href="/login?ref={{.Request.URL.RequestURI}}">Staff Login</a>
     {{- end -}}
   </nav>
-  <div class="container" id="body">{{.FlashMessage}}{{block "body" $}}{{end}}</div>
+  <div class="container" id="body">{{template "flash" $}}{{block "body" $}}{{end}}</div>
   <script src="{{staticFile "jquery.min.js"}}"></script>
   <script src="{{staticFile "bootstrap.min.js"}}"></script>
   <script src="{{staticFile "site.js"}}"></script>
@@ -35,3 +35,5 @@
 </body>
 </html>
 {{end}}
+
+

@@ -47,7 +47,7 @@ type Conference struct {
 
 	Year  int `json:"year" firestore:"year"`
 	Month int `json:"month" firestore:"month"`
-	Day   int `json:"day" firstore":"day"`
+	Day   int `json:"day" firestore:"day"`
 
 	lunch struct {
 		once       sync.Once

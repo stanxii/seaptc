@@ -42,11 +42,11 @@ func (tc *templateContext) FlashMessage() interface{} {
 	return &result
 }
 
-func (tc *templateContext) XSRFToken(action string) htemp.HTML {
+func (tc *templateContext) XSRFToken(path string) htemp.HTML {
 	rc := tc.rc
-	id := fmt.Sprintf("%s\000%d", rc.staffID, rc.participantID)
-	return htemp.HTML(fmt.Sprintf(`<input type="hidden" name="_xsrftoken" value="%s">`,
-		xsrftoken.Generate(rc.application.config.XSRFKey, id, action)))
+	id := fmt.Sprintf("%s\000%s", rc.staffID, rc.participantID)
+	t := xsrftoken.Generate(rc.application.config.XSRFKey, id, path)
+	return htemp.HTML(fmt.Sprintf(`<input type="hidden" name="_xsrftoken" value="%s">`, t))
 }
 
 func (tc *templateContext) QP(text string, kvs ...string) (htemp.HTML, error) {

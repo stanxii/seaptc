@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -24,16 +25,25 @@ var protoValues = []interface{}{
 	(*data.Participant)(nil),
 }
 
+type fieldNames struct {
+	Go        string
+	Firestore string
+}
+
 type typeInfo struct {
 	Name      string
-	MergeSets map[string][]string
-	Fields    [][2]string
+	FieldSets map[string][]fieldNames
+	Fields    []fieldNames
+}
+
+func sortNames(names []fieldNames) {
+	sort.Slice(names, func(i, j int) bool { return names[i].Go < names[j].Go })
 }
 
 func getTypeInfo(t reflect.Type) *typeInfo {
 	result := typeInfo{
 		Name:      t.Name(),
-		MergeSets: make(map[string][]string),
+		FieldSets: make(map[string][]fieldNames),
 	}
 
 	for i := 0; i < t.NumField(); i++ {
@@ -55,14 +65,21 @@ func getTypeInfo(t reflect.Type) *typeInfo {
 			}
 		}
 
-		result.Fields = append(result.Fields, [2]string{f.Name, name})
+		names := fieldNames{Go: f.Name, Firestore: name}
 
-		if t := f.Tag.Get("merge"); t != "" {
+		result.Fields = append(result.Fields, names)
+		if t := f.Tag.Get("fields"); t != "" {
 			for _, set := range strings.Split(t, ",") {
-				result.MergeSets[set] = append(result.MergeSets[set], f.Name)
+				result.FieldSets[set] = append(result.FieldSets[set], names)
 			}
 		}
 	}
+
+	sortNames(result.Fields)
+	for _, names := range result.FieldSets {
+		sortNames(names)
+	}
+
 	return &result
 }
 
@@ -71,22 +88,24 @@ var codeTemplate = template.Must(template.New("").Parse(`
 
 package data
 
-import "cloud.google.com/go/firestore"
-
 {{range $type := .}}
 const (
     {{range $type.Fields -}}
-    {{$type.Name}}_{{index . 0}} = {{printf "%q" (index . 1)}}
+    {{$type.Name}}_{{.Go}} = {{printf "%q" .Firestore}}
     {{end}}
 )
 {{end}}
 
-{{range $type := .}}{{range $name, $fields := $type.MergeSets}}
-var {{$type.Name}}Merge_{{$name}} = firestore.Merge(firestore.FieldPath{ 
-    {{range $fields -}}
-    {{$type.Name}}_{{.}},
-    {{end}} })
-{{end}}{{end}}
+{{range $type := .}}{{range $name, $fields := $type.FieldSets}}
+    func (x *{{$type.Name}}) {{$name}}Fields() map[string]interface{} {
+        return map[string]interface{}{
+            {{range $fields -}}
+                {{printf "%q" .Firestore}}: x.{{.Go}},
+            {{end -}}
+        }
+    }
+    {{end}}
+{{end}}
 `))
 
 func main() {

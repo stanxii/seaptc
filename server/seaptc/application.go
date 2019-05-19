@@ -15,19 +15,18 @@ import (
 	"github.com/garyburd/web/httperror"
 	"github.com/garyburd/web/templates"
 	"github.com/seaptc/server/data"
-	"github.com/seaptc/server/datastore"
+	"github.com/seaptc/server/store"
 
 	"golang.org/x/net/xsrftoken"
-	"golang.org/x/xerrors"
 )
 
 type application struct {
-	devMode  bool
-	dsClient *datastore.Client
+	devMode bool
+	store   *store.Store
 
 	nextRequestID int64 // incremented on each request, used in log output
 
-	config data.AppConfig
+	config *data.AppConfig
 
 	flashCodec         *cookie.Codec
 	staffIDCodec       *cookie.Codec
@@ -43,11 +42,11 @@ type applicationService interface {
 	errorTemplate() *templates.Template
 }
 
-func newApplication(ctx context.Context, dsClient *datastore.Client, devMode bool, assetDir string, services ...applicationService) (http.Handler, error) {
+func newApplication(ctx context.Context, st *store.Store, devMode bool, assetDir string, services ...applicationService) (http.Handler, error) {
 
-	var config data.AppConfig
-	if err := dsClient.GetDocTo(ctx, data.AppConfigPath, &config); err != nil {
-		return nil, xerrors.Errorf("get app config: %w", err)
+	config, err := st.GetAppConfig(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	var hmacKeys [][]byte
@@ -57,7 +56,7 @@ func newApplication(ctx context.Context, dsClient *datastore.Client, devMode boo
 
 	a := application{
 		devMode:  devMode,
-		dsClient: dsClient,
+		store:    st,
 		config:   config,
 		adminIDs: make(map[string]bool),
 		staffIDs: make(map[string]bool),
@@ -75,6 +74,7 @@ func newApplication(ctx context.Context, dsClient *datastore.Client, devMode boo
 
 	for _, id := range a.config.AdminIDs {
 		a.adminIDs[id] = true
+		a.staffIDs[id] = true
 	}
 	for _, id := range a.config.StaffIDs {
 		a.staffIDs[id] = true
@@ -141,14 +141,15 @@ func (h *handler) ServeHTTP(response http.ResponseWriter, request *http.Request)
 	}
 
 	if err := a.participantIDCodec.Decode(rc.request, &rc.participantID); err != nil {
-		rc.participantID = 0
+		rc.participantID = ""
 	}
 
 	// Clobber ids if XSRF token is not valid.
 	if request.Method != "HEAD" && request.Method != "GET" {
-		id := fmt.Sprintf("%s\000%d", rc.staffID, rc.participantID)
+		id := fmt.Sprintf("%s\000%s", rc.staffID, rc.participantID)
 		if !xsrftoken.Valid(request.FormValue("_xsrftoken"), rc.application.config.XSRFKey, id, request.URL.Path) {
-			rc.participantID = 0
+			rc.logf("xsrf check failed for staffID=%q, particpiantID=%q", rc.staffID, rc.participantID)
+			rc.participantID = ""
 			rc.staffID = ""
 		}
 	}
@@ -186,7 +187,7 @@ type requestContext struct {
 	staffID          string
 	isAdmin, isStaff bool
 
-	participantID int64
+	participantID string
 }
 
 func (rc *requestContext) redirect(path string, statusCode int) error {

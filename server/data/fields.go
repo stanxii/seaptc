@@ -2,113 +2,121 @@
 
 package data
 
-import "cloud.google.com/go/firestore"
-
 const (
-	AppConfig_XSRFKey                        = "xsrfKey"
-	AppConfig_HMACKeys                       = "hmacKeys"
 	AppConfig_AdminIDs                       = "adminIDs"
+	AppConfig_HMACKeys                       = "hmacKeys"
 	AppConfig_LoginClient                    = "loginClient"
-	AppConfig_PlanningSheetURL               = "planningSheetURL"
 	AppConfig_PlanningSheetServiceAccountKey = "planningSheetServiceAccountKey"
+	AppConfig_PlanningSheetURL               = "planningSheetURL"
+	AppConfig_StaffIDs                       = "staffIDs"
+	AppConfig_XSRFKey                        = "xsrfKey"
 )
 
 const (
-	Class_Number           = "number"
+	Class_AccessToken      = "accessToken"
+	Class_Capacity         = "capacity"
+	Class_DKHash           = "dkHash"
+	Class_Description      = "description"
+	Class_EvaluationCodes  = "evaluationCodes"
+	Class_InstructorEmails = "instructorEmails"
+	Class_InstructorNames  = "instructorNames"
 	Class_Length           = "length"
-	Class_Responsibility   = "responsibility"
+	Class_Location         = "location"
 	Class_New              = "new"
+	Class_Number           = "number"
+	Class_Programs         = "programs"
+	Class_Responsibility   = "responsibility"
+	Class_SpreadsheetRow   = "spreadsheetRow"
 	Class_Title            = "title"
 	Class_TitleNotes       = "titleNotes"
-	Class_Description      = "description"
-	Class_Programs         = "programs"
-	Class_Capacity         = "capacity"
-	Class_Location         = "location"
-	Class_SpreadsheetRow   = "spreadsheetRow"
-	Class_InstructorNames  = "instructorNames"
-	Class_InstructorEmails = "instructorEmails"
-	Class_EvaluationCodes  = "evaluationCodes"
-	Class_AccessToken      = "accessToken"
-	Class_DKDirty          = "dkDirty"
 )
 
 const (
+	Conference_Day     = "day"
 	Conference_Lunches = "lunches"
-	Conference_Date    = "Date"
+	Conference_Month   = "month"
+	Conference_Year    = "year"
 )
 
 const (
-	Participant_RegistrationNumber  = "registrationNumber"
-	Participant_FirstName           = "firstName"
-	Participant_LastName            = "lastName"
-	Participant_Nickname            = "nickname"
-	Participant_Suffix              = "suffix"
-	Participant_Staff               = "staff"
-	Participant_Youth               = "youth"
-	Participant_Phone               = "phone"
-	Participant_Email               = "email"
 	Participant_Address             = "address"
+	Participant_BSANumber           = "bsaNumber"
 	Participant_City                = "city"
-	Participant_State               = "state"
-	Participant_Zip                 = "zip"
-	Participant_StaffRole           = "staffRole"
+	Participant_Classes             = "classes"
 	Participant_Council             = "council"
-	Participant_District            = "district"
-	Participant_UnitType            = "unitType"
-	Participant_UnitNumber          = "unitNumber"
 	Participant_DietaryRestrictions = "dietaryRestrictions"
+	Participant_District            = "district"
+	Participant_Email               = "email"
+	Participant_FirstName           = "firstName"
+	Participant_InstructorClasses   = "instructorClasses"
+	Participant_LastName            = "lastName"
 	Participant_Marketing           = "marketing"
+	Participant_Nickname            = "nickname"
+	Participant_NoShow              = "noShow"
+	Participant_Notes               = "notes"
+	Participant_OABanquet           = "oaBanquet"
+	Participant_Phone               = "phone"
+	Participant_RegistrationNumber  = "registrationNumber"
 	Participant_ScoutingYears       = "scoutingYears"
 	Participant_ShowQRCode          = "showQRCode"
-	Participant_BSANumber           = "bsaNumber"
-	Participant_Classes             = "classes"
+	Participant_Staff               = "staff"
 	Participant_StaffDescription    = "staffDescription"
-	Participant_Notes               = "notes"
-	Participant_NoShow              = "noShow"
+	Participant_StaffRole           = "staffRole"
+	Participant_State               = "state"
+	Participant_Suffix              = "suffix"
+	Participant_UnitNumber          = "unitNumber"
+	Participant_UnitType            = "unitType"
+	Participant_Youth               = "youth"
+	Participant_Zip                 = "zip"
 )
 
-var ClassMerge_Sheet = firestore.Merge(firestore.FieldPath{
-	Class_Number,
-	Class_Length,
-	Class_Responsibility,
-	Class_New,
-	Class_Title,
-	Class_TitleNotes,
-	Class_Description,
-	Class_Programs,
-	Class_Capacity,
-	Class_Location,
-	Class_SpreadsheetRow,
-	Class_InstructorNames,
-	Class_InstructorEmails,
-	Class_EvaluationCodes,
-	Class_AccessToken,
-})
+func (x *Class) SheetFields() map[string]interface{} {
+	return map[string]interface{}{
+		"accessToken":      x.AccessToken,
+		"capacity":         x.Capacity,
+		"description":      x.Description,
+		"evaluationCodes":  x.EvaluationCodes,
+		"instructorEmails": x.InstructorEmails,
+		"instructorNames":  x.InstructorNames,
+		"length":           x.Length,
+		"location":         x.Location,
+		"new":              x.New,
+		"number":           x.Number,
+		"programs":         x.Programs,
+		"responsibility":   x.Responsibility,
+		"spreadsheetRow":   x.SpreadsheetRow,
+		"title":            x.Title,
+		"titleNotes":       x.TitleNotes,
+	}
+}
 
-var ParticipantMerge_DK = firestore.Merge(firestore.FieldPath{
-	Participant_RegistrationNumber,
-	Participant_FirstName,
-	Participant_LastName,
-	Participant_Nickname,
-	Participant_Suffix,
-	Participant_Staff,
-	Participant_Youth,
-	Participant_Phone,
-	Participant_Email,
-	Participant_Address,
-	Participant_City,
-	Participant_State,
-	Participant_Zip,
-	Participant_StaffRole,
-	Participant_Council,
-	Participant_District,
-	Participant_UnitType,
-	Participant_UnitNumber,
-	Participant_DietaryRestrictions,
-	Participant_Marketing,
-	Participant_ScoutingYears,
-	Participant_ShowQRCode,
-	Participant_BSANumber,
-	Participant_Classes,
-	Participant_StaffDescription,
-})
+func (x *Participant) DKFields() map[string]interface{} {
+	return map[string]interface{}{
+		"address":             x.Address,
+		"bsaNumber":           x.BSANumber,
+		"city":                x.City,
+		"classes":             x.Classes,
+		"council":             x.Council,
+		"dietaryRestrictions": x.DietaryRestrictions,
+		"district":            x.District,
+		"email":               x.Email,
+		"firstName":           x.FirstName,
+		"lastName":            x.LastName,
+		"marketing":           x.Marketing,
+		"nickname":            x.Nickname,
+		"oaBanquet":           x.OABanquet,
+		"phone":               x.Phone,
+		"registrationNumber":  x.RegistrationNumber,
+		"scoutingYears":       x.ScoutingYears,
+		"showQRCode":          x.ShowQRCode,
+		"staff":               x.Staff,
+		"staffDescription":    x.StaffDescription,
+		"staffRole":           x.StaffRole,
+		"state":               x.State,
+		"suffix":              x.Suffix,
+		"unitNumber":          x.UnitNumber,
+		"unitType":            x.UnitType,
+		"youth":               x.Youth,
+		"zip":                 x.Zip,
+	}
+}

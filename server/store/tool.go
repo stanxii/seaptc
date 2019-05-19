@@ -11,14 +11,14 @@ import (
 	"os"
 
 	"github.com/seaptc/server/data"
-	"github.com/seaptc/server/datastore"
+	"github.com/seaptc/server/store"
 )
 
 func main() {
 	log.SetFlags(0)
-	datastore.SetupFlags()
+	store.SetupFlags()
 	flag.Parse()
-	client, err := datastore.NewFromFlags(context.Background())
+	s, err := store.NewFromFlags(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -27,18 +27,18 @@ func main() {
 
 	switch flag.Arg(0) {
 	case "config-get":
-		var config data.AppConfig
-		if err := client.GetDocTo(ctx, data.AppConfigPath, &config); err != nil {
+		config, err := s.GetAppConfig(ctx)
+		if err != nil {
 			log.Fatal(err)
 		}
-		p, _ := json.MarshalIndent(&config, "", "  ")
+		p, _ := json.MarshalIndent(config, "", "  ")
 		fmt.Printf("%s\n", p)
 	case "config-set":
 		var config data.AppConfig
 		if err := json.NewDecoder(os.Stdin).Decode(&config); err != nil {
 			log.Fatal(err)
 		}
-		if _, err := client.Doc(data.AppConfigPath).Set(ctx, &config); err != nil {
+		if err := s.SetAppConfig(ctx, &config); err != nil {
 			log.Fatal(err)
 		}
 	default:

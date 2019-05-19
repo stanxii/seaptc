@@ -1,0 +1,34 @@
+{{define "title"}}PTC Classes{{end}}
+{{define "body"}}
+  <h3>Classes</h3>
+  <p>
+  <table class="table table-sm table-hover smaller-text mb-3">
+   <thead>
+      <tr>
+        <th>{{$.QP "Name" "sort" ""}}</th>
+        <th>{{$.QP "Location" "sort" "location"}}</th>
+        <th>Session</th>
+        {{if $.IsStaff}}<th>{{$.QP "Responsibility" "sort" "responsibility"}}</th>{{end}}
+        <th class="text-right">{{$.QP "Capacity" "sort" "capacity"}}</th>
+      </tr>
+    <tbody>
+    {{range .Data.Classes -}}
+      <tr>
+        <td><a href="/dashboard/classes/{{.Number}}">{{.Number}}</a>: {{.Title}}</td>
+        <td class="text-nowrap">{{.Location}}</td>
+        <td>{{add .Start 1}}{{if gt .Length 1}} &ndash; {{add .Start .Length}}{{end}}</td>
+        {{if $.IsStaff}}<td class="text-nowrap">{{.Responsibility}}</td>{{end}}
+        <td class="text-right">{{if lt 0 .Capacity}}{{.Capacity}}{{end}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+
+  {{if $.IsStaff -}}
+    <form class="form-inline mb-3" action="/dashboard/classes/refresh" class="form-inline" method="post">
+      {{$.XSRFToken "/dashboard/classes/refresh"}}
+      <input type="hidden" name="ref" value="{{$.Request.URL.RequestURI}}">
+      <button type="submit" class="btn btn-outline-secondary">Reload classes from spreadsheet</button>
+    </form>
+  {{end}}
+{{end}}

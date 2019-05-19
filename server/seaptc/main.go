@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/seaptc/server/datastore"
+	"github.com/seaptc/server/store"
 )
 
 func main() {
@@ -23,15 +23,15 @@ func main() {
 
 	addr := flag.String("addr", defaultAddr, "")
 	dir := flag.String("dir", "assets", "")
-	datastore.SetupFlags()
+	store.SetupFlags()
 	flag.Parse()
 
-	dsClient, err := datastore.NewFromFlags(context.Background())
+	st, err := store.NewFromFlags(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	h, err := newApplication(context.Background(), dsClient, !isAppEngine, *dir,
+	h, err := newApplication(context.Background(), st, !isAppEngine, *dir,
 		&catalogService{},
 		&dashboardService{},
 		&loginService{})

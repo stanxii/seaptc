@@ -3,45 +3,36 @@ package data
 import "strings"
 
 type Participant struct {
-	RegistrationNumber  string `json:"registrationNumber" firestore:"registrationNumber" merge:"DK"`
-	FirstName           string `json:"firstName" firestore:"firstName" merge:"DK"`
-	LastName            string `json:"lastName" firestore:"lastName" merge:"DK"`
-	Nickname            string `json:"nickname" firestore:"nickname" merge:"DK"`
-	Suffix              string `json:"suffix" firestore:"suffix" merge:"DK"`
-	Staff               bool   `json:"staff" firestore:"staff" merge:"DK"`
-	Youth               bool   `json:"youth" firestore:"youth" merge:"DK"`
-	Phone               string `json:"phone" firestore:"phone" merge:"DK"`
-	Email               string `json:"email" firestore:"email" merge:"DK"`
-	Address             string `json:"address" firestore:"address" merge:"DK"`
-	City                string `json:"city" firestore:"city" merge:"DK"`
-	State               string `json:"state" firestore:"state" merge:"DK"`
-	Zip                 string `json:"zip" firestore:"zip" merge:"DK"`
-	StaffRole           string `json:"staffRole" firestore:"staffRole" merge:"DK"` // Instructor, Support, Midway
-	Council             string `json:"council" firestore:"council" merge:"DK"`
-	District            string `json:"district" firestore:"district" merge:"DK"`
-	UnitType            string `json:"unitType" firestore:"unitType" merge:"DK"`
-	UnitNumber          string `json:"unitNumber" firestore:"unitNumber" merge:"DK"`
-	DietaryRestrictions string `json:"dietaryRestrictions" firestore:"dietaryRestrictions" merge:"DK"`
-	Marketing           string `json:"marketing" firestore:"marketing" merge:"DK"`
-	ScoutingYears       string `json:"scoutingYears" firestore:"scoutingYears" merge:"DK"`
-	ShowQRCode          bool   `json:"showQRCode" firestore:"showQRCode" merge:"DK"`
-	BSANumber           string `json:"bsaNumber" firestore:"bsaNumber" merge:"DK"`
-	Classes             []int  `json:"classes" firestore:"classes" merge:"DK"`
-	StaffDescription    string `json:"staffDescription" firestore:"staffDescription" merge:"DK"` // instructor classes, midway org
-	OABanquet           bool   `json:"oaBanquet" firestore:"oaBanquet" merge:"DK"`
+	RegistrationNumber  string `json:"registrationNumber" firestore:"registrationNumber" fields:"DK"`
+	FirstName           string `json:"firstName" firestore:"firstName" fields:"DK"`
+	LastName            string `json:"lastName" firestore:"lastName" fields:"DK"`
+	Nickname            string `json:"nickname" firestore:"nickname" fields:"DK"`
+	Suffix              string `json:"suffix" firestore:"suffix" fields:"DK"`
+	Staff               bool   `json:"staff" firestore:"staff" fields:"DK"`
+	Youth               bool   `json:"youth" firestore:"youth" fields:"DK"`
+	Phone               string `json:"phone" firestore:"phone" fields:"DK"`
+	Email               string `json:"email" firestore:"email" fields:"DK"`
+	Address             string `json:"address" firestore:"address" fields:"DK"`
+	City                string `json:"city" firestore:"city" fields:"DK"`
+	State               string `json:"state" firestore:"state" fields:"DK"`
+	Zip                 string `json:"zip" firestore:"zip" fields:"DK"`
+	StaffRole           string `json:"staffRole" firestore:"staffRole" fields:"DK"` // Instructor, Support, Midway
+	Council             string `json:"council" firestore:"council" fields:"DK"`
+	District            string `json:"district" firestore:"district" fields:"DK"`
+	UnitType            string `json:"unitType" firestore:"unitType" fields:"DK"`
+	UnitNumber          string `json:"unitNumber" firestore:"unitNumber" fields:"DK"`
+	DietaryRestrictions string `json:"dietaryRestrictions" firestore:"dietaryRestrictions" fields:"DK"`
+	Marketing           string `json:"marketing" firestore:"marketing" fields:"DK"`
+	ScoutingYears       string `json:"scoutingYears" firestore:"scoutingYears" fields:"DK"`
+	ShowQRCode          bool   `json:"showQRCode" firestore:"showQRCode" fields:"DK"`
+	BSANumber           string `json:"bsaNumber" firestore:"bsaNumber" fields:"DK"`
+	Classes             []int  `json:"classes" firestore:"classes" fields:"DK"`
+	StaffDescription    string `json:"staffDescription" firestore:"staffDescription" fields:"DK"` // instructor classes, midway org
+	OABanquet           bool   `json:"oaBanquet" firestore:"oaBanquet" fields:"DK"`
 
 	InstructorClasses []int  `json:"instructorClasses" firestore:"instructorClasses"`
-	Notes             string `json:"notes" firestore:"notes" merge:""`
-	NoShow            bool   `json:"noShow" firestore:"noShow" merge:""`
-}
-
-// DocName returns the document name for Firestore.
-func (p *Participant) DocName() string {
-	ya := "a"
-	if p.Youth {
-		ya = "y"
-	}
-	return strings.Join([]string{p.LastName, p.FirstName, p.Suffix, ya, p.RegistrationNumber}, "_")
+	Notes             string `json:"notes" firestore:"notes" fields:""`
+	NoShow            bool   `json:"noShow" firestore:"noShow" feilds:""`
 }
 
 // Type returns a short description of the participant's registration type.

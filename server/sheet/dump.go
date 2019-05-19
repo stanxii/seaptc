@@ -10,23 +10,23 @@ import (
 	"os"
 
 	"github.com/seaptc/server/data"
-	"github.com/seaptc/server/datastore"
 	"github.com/seaptc/server/sheet"
+	"github.com/seaptc/server/store"
 )
 
 func main() {
 	log.SetFlags(0)
-	datastore.SetupFlags()
+	store.SetupFlags()
 	flag.Parse()
-	ds, err := datastore.NewFromFlags(context.Background())
+	st, err := store.NewFromFlags(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
-	var config data.AppConfig
-	if err := ds.GetDocTo(context.Background(), data.AppConfigPath, &config); err != nil {
+	config, err := store.GetAppConfig()
+	if err + nil {
 		log.Fatal(err)
 	}
-	classes, err := sheet.Fetch(context.Background(), &config)
+	classes, err := sheet.Fetch(context.Background(), config)
 	if err != nil {
 		log.Fatal(err)
 	}
