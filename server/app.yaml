@@ -1,9 +1,17 @@
 runtime: go112
-default_expiration: "4d"
+default_expiration: "2d"
 main: ./seaptc
 
 handlers:
-- url: /static
+- url: /favicon\.ico
+  static_files: assets/static/favicon.ico
+  upload: assets/static/favicon.ico
+
+- url: /robots\.txt
+  static_files: assets/static/robots.txt
+  upload: assets/static/robots.txt
+
+- url: /static/
   static_dir: assets/static
 
 - url: /.*

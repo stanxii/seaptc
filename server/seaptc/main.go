@@ -33,6 +33,7 @@ func main() {
 
 	h, err := newApplication(context.Background(), dsClient, !isAppEngine, *dir,
 		&catalogService{},
+		&dashboardService{},
 		&loginService{})
 	if err != nil {
 		log.Fatal(err)

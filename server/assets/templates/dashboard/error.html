@@ -1,0 +1,6 @@
+{{define "body"}}
+  <p>{{.Data.Message}}
+  {{if eq .Data.Status 403}} 
+    <p><a class="btn btn-outline-secondary" href="/login?ref={{.Request.URL.RequestURI}}">Staff Login</a>
+  {{end}}
+{{end}}

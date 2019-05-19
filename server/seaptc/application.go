@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	htemp "html/template"
 	"log"
 	"net/http"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -35,15 +35,12 @@ type application struct {
 
 	adminIDs map[string]bool
 	staffIDs map[string]bool
-
-	templates struct {
-		Error *templates.Template `html:`
-	}
 }
 
 type applicationService interface {
 	init(context.Context, *application, *templates.Manager) error
-	convert(v interface{}) func(*requestContext) error
+	makeHandler(v interface{}) func(*requestContext) error
+	errorTemplate() *templates.Template
 }
 
 func newApplication(ctx context.Context, dsClient *datastore.Client, devMode bool, assetDir string, services ...applicationService) (http.Handler, error) {
@@ -84,46 +81,54 @@ func newApplication(ctx context.Context, dsClient *datastore.Client, devMode boo
 	}
 
 	tm := newTemplateManager(assetDir)
-	tm.NewFromFields(&a.templates)
 	mux := http.NewServeMux()
-	mux.Handle("/static/", http.FileServer(http.Dir(assetDir)))
 
-	for _, s := range services {
-		if err := s.init(ctx, &a, tm); err != nil {
+	// The following handlers should match the static file handlers declared
+	// app.yaml.
+	staticFile := func(name string) http.HandlerFunc {
+		p := filepath.Join(assetDir, "static", name)
+		return func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, p)
+		}
+	}
+	mux.Handle("/static/", http.FileServer(http.Dir(assetDir)))
+	mux.Handle("/robots.txt", staticFile("robots.txt"))
+	mux.Handle("/favicon.ico", staticFile("favicon.ico"))
+
+	for _, svc := range services {
+		if err := svc.init(ctx, &a, tm); err != nil {
 			return nil, err
 		}
 
-		t := reflect.TypeOf(s)
+		t := reflect.TypeOf(svc)
 		for i := 0; i < t.NumMethod(); i++ {
 			m := t.Method(i)
 			if !strings.HasPrefix(m.Name, "Serve_") {
 				continue
 			}
-			if m.Type.NumIn() != 2 ||
-				m.Type.In(0) != t ||
-				m.Type.In(1) != reflect.TypeOf((*requestContext)(nil)) ||
-				m.Type.NumOut() != 1 ||
-				m.Type.Out(0) != reflect.TypeOf((*error)(nil)).Elem() {
-				return nil, fmt.Errorf("%v.%s does not have signature func (%v)(*requestContext) error", t, m.Name, t)
+			f := svc.makeHandler(m.Func.Interface())
+			if f == nil {
+				return nil, fmt.Errorf("could not create handler for %v.%s", t, m.Name)
 			}
 			path := strings.Replace(strings.TrimPrefix(m.Name, "Serve"), "_", "/", -1)
-			mux.Handle(path, &handler{a: &a, f: s.convert(m.Func.Interface())})
+			mux.Handle(path, &handler{application: &a, svc: svc, f: f})
 		}
 	}
 
-	if err := tm.Load(assetDir, true); err != nil {
+	if err := tm.Load(filepath.Join(assetDir, "templates"), a.devMode); err != nil {
 		return nil, err
 	}
 	return mux, nil
 }
 
 type handler struct {
-	a *application
-	f func(*requestContext) error
+	application *application
+	svc         applicationService
+	f           func(*requestContext) error
 }
 
 func (h *handler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	a := h.a
+	a := h.application
 	rc := requestContext{
 		application: a,
 		response:    response,
@@ -154,9 +159,20 @@ func (h *handler) ServeHTTP(response http.ResponseWriter, request *http.Request)
 	rc.logf("request: %s %s %s", rc.request.Method, rc.request.URL.Path, rc.staffID)
 
 	err := h.f(&rc)
+
 	if err != nil {
-		rc.respondError(err)
-		return
+		rc.logf("resp error: %+v", err)
+		e := httperror.Convert(err)
+		if t := h.svc.errorTemplate(); t != nil {
+			err := rc.respond(h.svc.errorTemplate(), e.Status, e)
+			if err != nil {
+				rc.logf("error rendering error template: %v", err)
+			} else {
+				return
+			}
+		}
+		rc.response.Header().Set("Content-Type", "text/plain")
+		http.Error(rc.response, e.Message, e.Status)
 	}
 }
 
@@ -180,24 +196,6 @@ func (rc *requestContext) redirect(path string, statusCode int) error {
 
 func (rc *requestContext) context() context.Context { return rc.request.Context() }
 
-func (rc *requestContext) FlashMessage() interface{} {
-	a := rc.application
-
-	var result struct{ Kind, Message string }
-	if err := a.flashCodec.Decode(rc.request, &result.Kind, &result.Message); err != nil {
-		return nil
-	}
-
-	a.flashCodec.Encode(rc.response, nil)
-	return &result
-}
-
-func (rc *requestContext) XSRFToken(action string) htemp.HTML {
-	id := fmt.Sprintf("%s\000%d", rc.staffID, rc.participantID)
-	return htemp.HTML(fmt.Sprintf(`<input type="hidden" name="_xsrftoken" value="%s">`,
-		xsrftoken.Generate(rc.application.config.XSRFKey, id, action)))
-}
-
 func (rc *requestContext) setFlashMessage(kind, format string, args ...interface{}) {
 	a := rc.application
 	message := fmt.Sprintf(format, args...)
@@ -211,20 +209,5 @@ func (rc *requestContext) logf(format string, args ...interface{}) {
 }
 
 func (rc *requestContext) respond(t *templates.Template, status int, data interface{}) error {
-	var v = struct {
-		*requestContext
-		Data interface{}
-	}{rc, data}
-	err := t.WriteResponse(rc.response, rc.request, status, &v)
-	return err
-}
-
-func (rc *requestContext) respondError(err error) {
-	rc.logf("resp error: %+v", err)
-	e := httperror.Convert(err)
-	if err := rc.respond(rc.application.templates.Error, e.Status, e); err != nil {
-		rc.logf("error rendering error template: %v", err)
-		rc.response.Header().Set("Content-Type", "text/plain")
-		http.Error(rc.response, e.Message, e.Status)
-	}
+	return t.WriteResponse(rc.response, rc.request, status, &templateContext{rc: rc, Data: data})
 }

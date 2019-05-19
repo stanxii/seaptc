@@ -27,8 +27,13 @@ func (svc *loginService) init(ctx context.Context, a *application, tm *templates
 	return nil
 }
 
-func (svc *loginService) convert(v interface{}) func(*requestContext) error {
-	f := v.(func(*loginService, *requestContext) error)
+func (svc *loginService) errorTemplate() *templates.Template { return nil }
+
+func (svc *loginService) makeHandler(v interface{}) func(*requestContext) error {
+	f, ok := v.(func(*loginService, *requestContext) error)
+	if !ok {
+		return nil
+	}
 	return func(rc *requestContext) error { return f(svc, rc) }
 }
 
