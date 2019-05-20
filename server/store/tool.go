@@ -10,7 +10,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/seaptc/server/data"
+	"github.com/seaptc/server/model"
 	"github.com/seaptc/server/store"
 )
 
@@ -34,7 +34,7 @@ func main() {
 		p, _ := json.MarshalIndent(config, "", "  ")
 		fmt.Printf("%s\n", p)
 	case "config-set":
-		var config data.AppConfig
+		var config model.AppConfig
 		if err := json.NewDecoder(os.Stdin).Decode(&config); err != nil {
 			log.Fatal(err)
 		}

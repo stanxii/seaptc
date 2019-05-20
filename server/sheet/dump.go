@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/seaptc/server/data"
 	"github.com/seaptc/server/sheet"
 	"github.com/seaptc/server/store"
 )
@@ -18,12 +17,14 @@ func main() {
 	log.SetFlags(0)
 	store.SetupFlags()
 	flag.Parse()
-	st, err := store.NewFromFlags(context.Background())
+	ctx := context.Background()
+
+	st, err := store.NewFromFlags(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	config, err := store.GetAppConfig()
-	if err + nil {
+	config, err := st.GetAppConfig(ctx)
+	if err != nil {
 		log.Fatal(err)
 	}
 	classes, err := sheet.Fetch(context.Background(), config)

@@ -1,4 +1,8 @@
-package data
+package model
+
+import "time"
+
+//go:generate go run gogen.go -input appconfig.go -output gen_appconfig.go AppConfig
 
 // AppConfig is loaded once at application startup.
 type AppConfig struct {
@@ -16,4 +20,6 @@ type AppConfig struct {
 	// Planning spreadsheet
 	PlanningSheetURL               string `json:"planningSheetURL" firestore:"planningSheetURL"`
 	PlanningSheetServiceAccountKey string `json:"planningSheetServiceAccountKey" firestore:"planningSheetServiceAccountKey"`
+
+	LastUpdateTime time.Time `json:"lastUpdateTime" firestore:"lastUpdateTime,serverTimestamp"`
 }

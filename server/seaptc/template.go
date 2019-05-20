@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/garyburd/web/templates"
-	"github.com/seaptc/server/data"
+	"github.com/seaptc/server/model"
 	"golang.org/x/net/xsrftoken"
 )
 
@@ -87,7 +87,7 @@ func newTemplateManager(assetDir string) *templates.Manager {
 				return result
 			},
 			"fmtTime": func(layout string, t time.Time) string {
-				return t.In(data.TimeLocation).Format(layout)
+				return t.In(model.TimeLocation).Format(layout)
 			},
 			"truncate": func(s string, n int) string {
 				i := 0

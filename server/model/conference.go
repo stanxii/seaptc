@@ -1,11 +1,11 @@
-package data
+package model
 
 import (
-	"strconv"
 	"sync"
+	"time"
 )
 
-//go:generate go run gogen.go -output fields.go
+//go:generate go run gogen.go -input conference.go -output gen_conference.go Conference
 
 type Lunch struct {
 	Name     string `json:"name" firestore:"name"`
@@ -27,27 +27,21 @@ type Lunch struct {
 	UnitTypes []string `json:"unitTypes" firestore:"unitTypes"`
 }
 
-/*
-type Session struct {
-    StartHour int `json:"startHour" firstore:"startHour"`
-    StartHour int `json:"startHour" firstore:"startHour"`
-    StartMinute int `json:"StartMinute" firstore:"startMinute"`
-    EndHour int `json:"endHour" firstore:"endHour"`
-    EndMinute int `json:"endMinute" firstore:"endMinute"`
-    Lunch bool `json:"lunch" firstore:"lunch"`
-}
-*/
-
-const NumSession = 6
-
 type Conference struct {
 	// First lunch is default choice
 	Lunches []*Lunch `json:"lunches" firestore:"lunches"`
-	//Sessions []*Session  `json:"sessions" firestore:"sessions"`
 
 	Year  int `json:"year" firestore:"year"`
 	Month int `json:"month" firestore:"month"`
 	Day   int `json:"day" firestore:"day"`
+
+	// String with lines in the following format:
+	//  code nnn,nnn!,nnn description
+	// where code is a program code (cub, bsa, ven, ...), nnn is a class
+	// number, nnn! is a required class number.
+	SuggestedSchedules int `json:"suggestedSchedules" firestore:"suggestedSchedules"`
+
+	LastUpdateTime time.Time `json:"lastUpdateTime" firestore:"lastUpdateTime,serverTimestamp"`
 
 	lunch struct {
 		once       sync.Once
@@ -55,8 +49,4 @@ type Conference struct {
 		byClass    map[int]*Lunch
 		byUnitType map[string]*Lunch
 	}
-}
-
-func (c *Conference) DocName() string {
-	return strconv.Itoa(c.Year)
 }

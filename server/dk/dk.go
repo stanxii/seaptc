@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/seaptc/server/data"
+	"github.com/seaptc/server/model"
 )
 
 const oaClassNumber = 700
@@ -22,7 +22,7 @@ var (
 )
 
 type participant struct {
-	data.Participant
+	model.Participant
 	registeredByFirstName string
 	registeredByLastName  string
 	registrationType      string
@@ -98,7 +98,7 @@ func addMarketing(p *participant, s string) {
 	p.Marketing = p.Marketing + "; " + strings.Replace(s, ";", " ", -1)
 }
 
-func ParseCSV(rd io.Reader) ([]*data.Participant, error) {
+func ParseCSV(rd io.Reader) ([]*model.Participant, error) {
 
 	// Skip BOM
 
@@ -131,7 +131,7 @@ func ParseCSV(rd io.Reader) ([]*data.Participant, error) {
 	// Process body rows.
 
 	var (
-		participants []*data.Participant
+		participants []*model.Participant
 		p            *participant
 	)
 	for i := 1; ; i++ {

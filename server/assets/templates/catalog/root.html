@@ -1,0 +1,33 @@
+{{define "ROOT"}}<!DOCTYPE html><html lang="en-US">
+<head> 
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Language" content="en-US">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="google" content="notranslate">	
+  <link rel="stylesheet" href="{{staticFile "bootstrap.min.css"}}">
+  <link rel="stylesheet" href="{{staticFile "site.css"}}">
+  <title>{{block "title" $}}Program and Training Conference{{end}}</title>
+</head>
+<body>
+  <div class="container" id="body">{{block "body" $}}{{end}}</div>
+  <script src="{{staticFile "jquery.min.js"}}"></script>
+  <script src="{{staticFile "bootstrap.min.js"}}"></script>
+  <script src="{{staticFile "site.js"}}"></script>
+</body>
+</html>
+{{end}}
+
+{{define "classDesc"}}<tr><th valign="top" id="c{{.Number}}">{{.Number}}</th><td valign="top">
+  {{range .ProgramInfos}}<img style="float:right;" src="https://seaptc.org/static/program/{{.Code}}.png" title="{{.Title}}">{{end}}
+  <strong>{{with .New}}<font color="red">{{.}}</font> {{end}}{{.Title}}{{with .TitleNotes}} ({{.}}){{end}}</strong> &mdash; {{.Description}}
+    <em>(
+      {{- if le .Length 1}}1&nbsp;hour, session&nbsp;{{add .End 1}}
+      {{- else if le .Length 6}}all&nbsp;day, sessions&nbsp;1&nbsp;&ndash;&nbsp;6
+      {{- else}}{{.Length}}&nbsp;hours, sessions&nbsp;{{add .Start 1}}&nbsp;&ndash;&nbsp;{{add .End 1}}
+      {{- end -}}
+    )</em>
+  </td></tr>
+{{end}}
+
+{{define "register"}}{{with $.Data.RegisterURL}}<p><a href="{{.}}" class="btn btn-primary btn-large">Register Now!</a>{{end}}{{end}}

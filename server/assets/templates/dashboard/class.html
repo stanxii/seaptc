@@ -1,0 +1,52 @@
+{{define "title"}}PTC Class {{$.Data.Class.Number}}{{end}}
+
+{{define "body"}}{{with .Data}}
+<h3>{{.Class.Number}}: {{.Class.Title}}</h3>
+<p>
+<table class="mb-3 infoblock">
+  {{if .InstructorView}}
+    <tr><th>Instructors</th><td>{{range $i, $u := .Class.InstructorNames}}{{if $i}}, {{end}}{{.}}{{end}}</td></tr>
+  {{end}}
+  <tr><th>Session</th><td>{{add .Class.Start 1}}{{if gt .Class.Length 1}} &ndash; {{add .Class.End 1}}{{end}}</td></tr>
+  <tr><th>Location / Capacity</th><td>{{with .Class.Location}}{{.}}{{else}}Location not assigned{{end}} / {{.Class.Capacity}}</td></tr>
+  {{with .Lunch}}
+    <tr><th>Lunch</th><td>{{.Name}} @ {{.Location}}</td></tr>
+  {{end}}
+  <tr><th>Participants</th><td>{{len .Participants}}</td></tr>
+  {{if  and $.IsStaff .InstructorURL}}
+    <tr><th>Instructor link</th><td><a href="{{.InstructorURL}}">{{.InstructorURL}}</a></td></tr>
+  {{end}}
+  {{if .InstructorView}}
+    <tr><th>Evaluation codes</th><td>{{range $i, $c := .EvaluationCodes}}{{if $i}}, {{end}}{{.}}{{end}}</td></tr>
+    <tr><th>Participant email</th><td>{{range $i, $p := .Participants}}{{if $i}}, {{end}}{{.Email}}{{end}}</td></tr>
+  {{end}}
+</table>
+<p>
+{{if .Participants}}
+  <table class="table table-sm table-hover">
+    <thead>
+      <tr>
+        {{if $.Data.InstructorView}}
+          <th>{{$.QP "Name" "sort" ""}}</th>
+        {{end}}
+        <th>{{$.QP "Type" "sort" "type"}}</th>
+        <th>{{$.QP "Council" "sort" "unit"}}</th>
+        <th>{{$.QP "District" "sort" "unit"}}</th>
+        <th>{{$.QP "Unit" "sort" "unit"}}</th>
+      </tr>
+    <thead>
+    <tbody>
+      {{range .Participants}}<tr>
+        {{if $.Data.InstructorView}}
+          <td class="text-nowrap">{{if $.IsStaff}}<a href="/dashboard/participants/{{.ID}}">{{.Name}}</a>{{else}}{{.Name}}{{end}}</td>
+        {{end}}
+        <td class="text-nowrap">{{.Type}}</td>
+        <td class="text-nowrap">{{.Council}}</td>
+        <td class="text-nowrap">{{.District}}</td>
+        <td class="text-nowrap">{{.UnitType}}{{if $.Data.InstructorView}} {{.UnitNumber}}{{end}}</td>
+      </tr>{{end}}
+    </tbody>
+  </table>
+{{end}}
+
+{{end}}{{end}}

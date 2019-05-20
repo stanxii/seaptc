@@ -14,7 +14,7 @@ import (
 	"github.com/garyburd/web/cookie"
 	"github.com/garyburd/web/httperror"
 	"github.com/garyburd/web/templates"
-	"github.com/seaptc/server/data"
+	"github.com/seaptc/server/model"
 	"github.com/seaptc/server/store"
 
 	"golang.org/x/net/xsrftoken"
@@ -26,7 +26,7 @@ type application struct {
 
 	nextRequestID int64 // incremented on each request, used in log output
 
-	config *data.AppConfig
+	config *model.AppConfig
 
 	flashCodec         *cookie.Codec
 	staffIDCodec       *cookie.Codec

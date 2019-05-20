@@ -5,10 +5,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"os"
-	"sort"
+	"sync"
+	"time"
 
-	"github.com/seaptc/server/data"
+	"github.com/seaptc/server/model"
 
 	"cloud.google.com/go/firestore"
 	"google.golang.org/grpc"
@@ -17,15 +19,16 @@ import (
 
 const (
 	appConfigPath    = "misc/appconfig"
-	classesPath      = "classses"
+	conferencePath   = "misc/conference"
+	classesPath      = "classes"
 	participantsPath = "participants"
 )
 
-func classPath(c *data.Class) string {
+func classPath(c *model.Class) string {
 	return fmt.Sprintf("%s/%d", classesPath, c.Number)
 }
 
-func participantPath(p *data.Participant) string {
+func participantPath(p *model.Participant) string {
 	ya := "a"
 	if p.Youth {
 		ya = "y"
@@ -33,8 +36,12 @@ func participantPath(p *data.Participant) string {
 	return fmt.Sprintf("%s/%s_%s_%s_%s_%s", participantsPath, p.LastName, p.FirstName, p.Suffix, ya, p.RegistrationNumber)
 }
 
+func IsNotFoundError(err error) bool {
+	return grpc.Code(err) == codes.NotFound
+}
+
 func notFoundOK(ds *firestore.DocumentSnapshot, err error) (*firestore.DocumentSnapshot, error) {
-	if grpc.Code(err) == codes.NotFound {
+	if IsNotFoundError(err) {
 		err = nil
 	}
 	return ds, err
@@ -54,6 +61,13 @@ func SetupFlags() {
 
 type Store struct {
 	fsClient *firestore.Client
+
+	classes struct {
+		mu           sync.Mutex
+		value        map[int]*model.Class
+		maxUpdateTime time.Time
+        readTime time.Time
+	}
 }
 
 // NewFromFlags creates a client using flags defined in this package.
@@ -72,7 +86,7 @@ func NewFromFlags(ctx context.Context) (*Store, error) {
 	}
 
 	fsClient, err := firestore.NewClient(ctx, projectID)
-	return &Store{fsClient}, err
+	return &Store{fsClient: fsClient}, err
 }
 
 func (store *Store) getDocTo(ctx context.Context, path string, v interface{}) error {
@@ -83,47 +97,127 @@ func (store *Store) getDocTo(ctx context.Context, path string, v interface{}) er
 	return sn.DataTo(v)
 }
 
-func (store *Store) GetAppConfig(ctx context.Context) (*data.AppConfig, error) {
-	var config data.AppConfig
+func (store *Store) GetAppConfig(ctx context.Context) (*model.AppConfig, error) {
+	var config model.AppConfig
 	return &config, store.getDocTo(ctx, appConfigPath, &config)
 }
 
-func (store *Store) SetAppConfig(ctx context.Context, config *data.AppConfig) error {
+func (store *Store) SetAppConfig(ctx context.Context, config *model.AppConfig) error {
 	_, err := store.fsClient.Doc(appConfigPath).Set(ctx, config)
 	return err
 }
 
-type Classes struct {
-	Slice []*data.Class       // Sorted by class number
-	Map   map[int]*data.Class // Key is class number
+func (store *Store) GetConference(ctx context.Context) (*model.Conference, error) {
+	var conf model.Conference
+	return &conf, store.getDocTo(ctx, conferencePath, &conf)
 }
 
-func (store *Store) GetClasses(ctx context.Context) (*Classes, error) {
-	snaps, err := store.fsClient.Collection(classesPath).Documents(ctx).GetAll()
+func (store *Store) SetConference(ctx context.Context, conf *model.Conference) error {
+	_, err := store.fsClient.Doc(conferencePath).Set(ctx, conf)
+	return err
+}
+
+func (store *Store) Foo() *firestore.Client { return store.fsClient }
+
+func (store *Store) GetClasses(ctx context.Context, maxAge time.Duration) (map[int]*model.Class, error) {
+	store.classes.mu.Lock()
+	defer store.classes.mu.Unlock()
+
+	// TODO: modify to handle arbitrary queries and value types
+	// TODO: use cookie to track high water mark
+
+	if time.Since(store.classes.readTime) < maxAge {
+		return store.classes.value, nil
+	}
+
+	snaps, err := store.fsClient.Collection(classesPath).
+		Where(model.Class_Timestamp, ">", store.classes.maxUpdateTime).
+		Documents(ctx).
+		GetAll()
+
 	if err != nil {
 		return nil, err
 	}
 
-	classes := Classes{Map: make(map[int]*data.Class), Slice: make([]*data.Class, len(snaps))}
+	if len(snaps) == 0 {
+		log.Printf("GetClasses: n=0")
+		store.classes.readTime = time.Now()
+		return store.classes.value, nil
+	}
 
-	for i, snap := range snaps {
-		var c data.Class
+	classes := make(map[int]*model.Class)
+	for n, c := range store.classes.value {
+		classes[n] = c
+	}
+
+	var maxUpdateTime time.Time
+	for _, snap := range snaps {
+		var c model.Class
 		if err := snap.DataTo(&c); err != nil {
 			return nil, err
 		}
-		classes.Map[c.Number] = &c
-		classes.Slice[i] = &c
-	}
-	sort.Slice(classes.Slice, func(i, j int) bool { return classes.Slice[i].Number < classes.Slice[j].Number })
-	return &classes, nil
-}
-
-func (store *Store) UpdateClasses(ctx context.Context, classes []*data.Class, fields func(*data.Class) map[string]interface{}) error {
-	for _, class := range classes {
-		_, err := store.fsClient.Doc(classPath(class)).Set(ctx, fields(class), firestore.MergeAll)
-		if err != nil {
-			return err
+        log.Println(c.Number, snap.UpdateTime.UnixNano(), c.LastUpdateTime.UnixNano())
+		classes[c.Number] = &c
+        if snap.UpdateTime.After(maxUpdateTime) {
+			maxUpdateTime = snap.UpdateTime
 		}
 	}
-	return nil
+	store.classes.readTime = time.Now()
+	store.classes.maxUpdateTime = maxUpdateTime
+	store.classes.value = classes
+
+	log.Printf("GetClasses: n=%d, maxTimeStamp=%d", len(snaps), maxUpdateTime.UnixNano())
+
+	return classes, nil
+}
+
+func (store *Store) UpdateClassesFromSheet(ctx context.Context, sheetClasses []*model.Class) (int, error) {
+	storeClasses, err := store.GetClasses(ctx, 0)
+	if err != nil {
+		return 0, err
+	}
+
+    store.classes.mu.Lock()
+    maxUpdateTime := store.classes.maxUpdateTime
+    store.classes.mu.Unlock()
+
+	batch := store.fsClient.Batch()
+	updateCount := 0
+	for _, sheetClass := range sheetClasses {
+		if storeClass := storeClasses[sheetClass.Number]; storeClass == nil ||
+			!storeClass.EqualSheetFields(sheetClass) ||
+            storeClass.LastUpdateTime.After(maxUpdateTime) {
+			m := sheetClass.SheetFields()
+			m[model.Class_Timestamp] = firestore.ServerTimestamp
+			batch.Set(store.fsClient.Doc(classPath(sheetClass)), m, firestore.MergeAll)
+			updateCount++
+		}
+	}
+
+/*
+    for _, storeClass := range storeClasses {
+        if _, ok := sheetClasses[storeClass.Number]; !ok {
+            batch.Delete(store.fsClient.Doc(classPath(storeClass)), nil)
+            updateCount++
+        }
+    }
+*/
+
+	if updateCount == 0 {
+		return 0, nil
+	}
+
+	results, err := batch.Commit(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for _, result := range results {
+		log.Printf("Update: %d", result.UpdateTime.UnixNano())
+	}
+	return updateCount, nil
+}
+
+func (store *Store) GetClass(ctx context.Context, number string) (*model.Class, error) {
+	var class model.Class
+	return &class, store.getDocTo(ctx, classesPath+"/"+number, &class)
 }

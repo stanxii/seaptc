@@ -10,13 +10,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/seaptc/server/data"
+	"github.com/seaptc/server/model"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/xerrors"
 )
 
 type class struct {
-	data.Class
+	model.Class
 }
 
 var setters = []struct {
@@ -35,13 +35,13 @@ var setters = []struct {
 	{"XXXX Email", func(c *class, s string) error { return setList(&c.InstructorEmails, strings.ToLower(s)) }},
 	{"Evaluation Codes", func(c *class, s string) error { return setList(&c.EvaluationCodes, s) }},
 	{"Dashboard Code", func(c *class, s string) error { return setString(&c.AccessToken, s) }},
-	{"Cub", func(c *class, s string) error { return setProgram(c, data.CubScoutProgram, s) }},
-	{"BS", func(c *class, s string) error { return setProgram(c, data.ScoutsBSAProgram, s) }},
-	{"Ven", func(c *class, s string) error { return setProgram(c, data.VenturingProgram, s) }},
-	{"Sea Scouts", func(c *class, s string) error { return setProgram(c, data.SeaScoutProgram, s) }},
-	{"Com", func(c *class, s string) error { return setProgram(c, data.CommissionerProgram, s) }},
-	{"Youth", func(c *class, s string) error { return setProgram(c, data.YouthProgram, s) }},
-	{"ALL", func(c *class, s string) error { return setProgram(c, data.AllProgram, s) }},
+	{"Cub", func(c *class, s string) error { return setProgram(c, 1<<model.CubScoutProgram, s) }},
+	{"BS", func(c *class, s string) error { return setProgram(c, 1<<model.ScoutsBSAProgram, s) }},
+	{"Ven", func(c *class, s string) error { return setProgram(c, 1<<model.VenturingProgram, s) }},
+	{"Sea Scouts", func(c *class, s string) error { return setProgram(c, 1<<model.SeaScoutProgram, s) }},
+	{"Com", func(c *class, s string) error { return setProgram(c, 1<<model.CommissionerProgram, s) }},
+	{"Youth", func(c *class, s string) error { return setProgram(c, 1<<model.YouthProgram, s) }},
+	{"ALL", func(c *class, s string) error { return setProgram(c, (1<<model.NumPrograms)-1, s) }},
 	{"Requested Capacity", setCapacity},
 	{"Actual Location & Registration Capacity", setCapacity},
 }
@@ -119,7 +119,7 @@ func setCapacity(c *class, s string) error {
 	return nil
 }
 
-func parseSheet(r io.Reader) ([]*data.Class, error) {
+func parseSheet(r io.Reader) ([]*model.Class, error) {
 	var sheet struct {
 		Rows [][]string `json:"values"`
 	}
@@ -152,7 +152,7 @@ func parseSheet(r io.Reader) ([]*data.Class, error) {
 		}
 	}
 
-	var result []*data.Class
+	var result []*model.Class
 	for i := 2; i < len(sheet.Rows); i++ {
 		row := sheet.Rows[i]
 		var c class
@@ -171,7 +171,7 @@ func parseSheet(r io.Reader) ([]*data.Class, error) {
 			continue
 		}
 		start, end := c.StartEnd()
-		if start >= data.NumSession || end >= data.NumSession {
+		if start >= model.NumSession || end >= model.NumSession {
 			return nil, fmt.Errorf("class %d has bad number or length (%d)", c.Number, c.Length)
 		}
 		result = append(result, &c.Class)
@@ -179,7 +179,7 @@ func parseSheet(r io.Reader) ([]*data.Class, error) {
 	return result, nil
 }
 
-func Fetch(ctx context.Context, config *data.AppConfig) ([]*data.Class, error) {
+func Fetch(ctx context.Context, config *model.AppConfig) ([]*model.Class, error) {
 	jwtConfig, err := google.JWTConfigFromJSON([]byte(config.PlanningSheetServiceAccountKey), "https://www.googleapis.com/auth/spreadsheets.readonly")
 	if err != nil {
 		return nil, xerrors.Errorf("error parsing planning sheet service account key: %w", err)

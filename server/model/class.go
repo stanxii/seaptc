@@ -1,8 +1,12 @@
-package data
+package model
 
 import (
 	"fmt"
+	"sort"
+	"time"
 )
+
+//go:generate go run gogen.go -input class.go -output gen_class.go Class
 
 // Class represents a PTC class.
 //
@@ -28,10 +32,15 @@ type Class struct {
 
 	// DKHash is the hash of the fields last set on the Doubleknot session event description.
 	DKHash bool `json:"dkHash" firestore:"dkHash"`
+
+	LastUpdateTime time.Time `json:"lastUpdateTime" firestore:"lastUpdateTime,serverTimestamp"`
 }
 
 // Start returns zero based index of the starting session.
 func (c *Class) Start() int { return int(c.Number/100) - 1 }
+
+// End returns zero based index of the ending session.
+func (c *Class) End() int { return c.Start() + c.Length - 1 }
 
 // StartEnd returns zero based indexes of first session and last session of
 // class.
@@ -59,48 +68,27 @@ func (c *Class) PartOfLength(format string, session int) string {
 	return fmt.Sprintf(format, session-c.Start()+1, c.Length)
 }
 
-const (
-	CubScoutProgram = 1 << iota
-	ScoutsBSAProgram
-	VenturingProgram
-	SeaScoutProgram
-	CommissionerProgram
-	YouthProgram
-	AllProgram = CubScoutProgram | ScoutsBSAProgram | VenturingProgram | SeaScoutProgram | CommissionerProgram | YouthProgram
-)
-
-type ProgramDescription struct {
-	mask int
-	Slug string
-	Name string
-}
-
-var ProgramDescriptions = []*ProgramDescription{
-	{CubScoutProgram, "cub", "Cub Pack adults"},
-	{ScoutsBSAProgram, "bsa", "Scout Troop adults"},
-	{VenturingProgram, "ven", "Venture Crew adults"},
-	{SeaScoutProgram, "sea", "Sea Scout adults"},
-	{CommissionerProgram, "com", "Commissioners"},
-	{YouthProgram, "you", "Youth"},
-
-	// AllProgram must be last in slice for ReverseProgramInfos()
-	{AllProgram, "all", "Everyone"},
-}
-
 func (c *Class) ProgramDescriptions() []*ProgramDescription {
-	// AllProgram is at end of slice.
-	if c.Programs == AllProgram {
-		return ProgramDescriptions[len(ProgramDescriptions)-1:]
+	return programDescriptionsForMask(c.Programs)
+}
+
+func SortedClasses(m map[int]*Class, what string) []*Class {
+	classes := make([]*Class, len(m))
+	i := 0
+	for _, class := range m {
+		classes[i] = class
+		i++
 	}
 
-	var result []*ProgramDescription
-
-	// Don't include AllProgram located at end of ProgramInfos slice.
-	// Return in reverse order for convenient layout of images in HTML.
-	for i := len(ProgramDescriptions) - 2; i >= 0; i-- {
-		if c.Programs&ProgramDescriptions[i].mask != 0 {
-			result = append(result, ProgramDescriptions[i])
-		}
+	switch what {
+	case Class_Location:
+		sort.Slice(classes, func(i, j int) bool { return classes[i].Location < classes[j].Location })
+	case Class_Responsibility:
+		sort.Slice(classes, func(i, j int) bool { return classes[i].Responsibility < classes[j].Responsibility })
+	case Class_Capacity:
+		sort.Slice(classes, func(i, j int) bool { return classes[i].Capacity < classes[j].Capacity })
+	default:
+		sort.Slice(classes, func(i, j int) bool { return classes[i].Number < classes[j].Number })
 	}
-	return result
+	return classes
 }

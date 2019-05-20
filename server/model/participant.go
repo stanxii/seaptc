@@ -1,6 +1,11 @@
-package data
+package model
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
+
+//go:generate go run gogen.go -input participant.go -output gen_participant.go Participant
 
 type Participant struct {
 	RegistrationNumber  string `json:"registrationNumber" firestore:"registrationNumber" fields:"DK"`
@@ -33,6 +38,8 @@ type Participant struct {
 	InstructorClasses []int  `json:"instructorClasses" firestore:"instructorClasses"`
 	Notes             string `json:"notes" firestore:"notes" fields:""`
 	NoShow            bool   `json:"noShow" firestore:"noShow" feilds:""`
+
+	LastUpdateTime time.Time `json:"lastUpdateTime" firestore:"lastUpdateTime,serverTimestamp"`
 }
 
 // Type returns a short description of the participant's registration type.
