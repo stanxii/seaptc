@@ -28,42 +28,39 @@ const (
 	Participant_StaffRole           = "staffRole"
 	Participant_State               = "state"
 	Participant_Suffix              = "suffix"
-	Participant_Timestamp           = "timestamp"
 	Participant_UnitNumber          = "unitNumber"
 	Participant_UnitType            = "unitType"
 	Participant_Youth               = "youth"
 	Participant_Zip                 = "zip"
 )
 
-func (x *Participant) DKFields() map[string]interface{} {
-	return map[string]interface{}{
-		"address":             x.Address,
-		"bsaNumber":           x.BSANumber,
-		"city":                x.City,
-		"classes":             x.Classes,
-		"council":             x.Council,
-		"dietaryRestrictions": x.DietaryRestrictions,
-		"district":            x.District,
-		"email":               x.Email,
-		"firstName":           x.FirstName,
-		"lastName":            x.LastName,
-		"marketing":           x.Marketing,
-		"nickname":            x.Nickname,
-		"oaBanquet":           x.OABanquet,
-		"phone":               x.Phone,
-		"registrationNumber":  x.RegistrationNumber,
-		"scoutingYears":       x.ScoutingYears,
-		"showQRCode":          x.ShowQRCode,
-		"staff":               x.Staff,
-		"staffDescription":    x.StaffDescription,
-		"staffRole":           x.StaffRole,
-		"state":               x.State,
-		"suffix":              x.Suffix,
-		"unitNumber":          x.UnitNumber,
-		"unitType":            x.UnitType,
-		"youth":               x.Youth,
-		"zip":                 x.Zip,
-	}
+func (x *Participant) CopyDKFields(y *Participant) {
+	x.Address = y.Address
+	x.BSANumber = y.BSANumber
+	x.City = y.City
+	x.Classes = y.Classes
+	x.Council = y.Council
+	x.DietaryRestrictions = y.DietaryRestrictions
+	x.District = y.District
+	x.Email = y.Email
+	x.FirstName = y.FirstName
+	x.LastName = y.LastName
+	x.Marketing = y.Marketing
+	x.Nickname = y.Nickname
+	x.OABanquet = y.OABanquet
+	x.Phone = y.Phone
+	x.RegistrationNumber = y.RegistrationNumber
+	x.ScoutingYears = y.ScoutingYears
+	x.ShowQRCode = y.ShowQRCode
+	x.Staff = y.Staff
+	x.StaffDescription = y.StaffDescription
+	x.StaffRole = y.StaffRole
+	x.State = y.State
+	x.Suffix = y.Suffix
+	x.UnitNumber = y.UnitNumber
+	x.UnitType = y.UnitType
+	x.Youth = y.Youth
+	x.Zip = y.Zip
 }
 
 func (x *Participant) EqualDKFields(y *Participant) bool {

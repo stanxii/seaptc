@@ -8,11 +8,11 @@ import (
 //go:generate go run gogen.go -input conference.go -output gen_conference.go Conference
 
 type Lunch struct {
-	Name     string `json:"name" firestore:"name"`
-	Location string `json:"location" firestore:"location"`
+	Name     string `json:"name" datastore:"name,noindex"`
+	Location string `json:"location" datastore:"location,noindex"`
 
 	// 1: first, 2: second
-	Seating int `json:"seating" firestore:"seating"`
+	Seating int `json:"seating" datastore:"seating,noindex"`
 
 	// If participant is taking one of these classes then
 	//  pick up lunch here
@@ -23,25 +23,23 @@ type Lunch struct {
 	//
 	// Unit types are from registration: Pack, Troop, Crew, Ship
 	//
-	Clases    []int    `json:"classes" firestore:"classes"`
-	UnitTypes []string `json:"unitTypes" firestore:"unitTypes"`
+	Classes   []int    `json:"classes" datastore:"classes,noindex"`
+	UnitTypes []string `json:"unitTypes" datastore:"unitTypes,noindex"`
 }
 
 type Conference struct {
 	// First lunch is default choice
-	Lunches []*Lunch `json:"lunches" firestore:"lunches"`
+	Lunches []*Lunch `json:"lunches" datastore:"lunches,noindex"`
 
-	Year  int `json:"year" firestore:"year"`
-	Month int `json:"month" firestore:"month"`
-	Day   int `json:"day" firestore:"day"`
+	Year  int `json:"year" datastore:"year,noindex"`
+	Month int `json:"month" datastore:"month,noindex"`
+	Day   int `json:"day" datastore:"day,noindex"`
 
 	// String with lines in the following format:
 	//  code nnn,nnn!,nnn description
 	// where code is a program code (cub, bsa, ven, ...), nnn is a class
 	// number, nnn! is a required class number.
-	SuggestedSchedules int `json:"suggestedSchedules" firestore:"suggestedSchedules"`
-
-	LastUpdateTime time.Time `json:"lastUpdateTime" firestore:"lastUpdateTime,serverTimestamp"`
+	SuggestedSchedules string `json:"suggestedSchedules" datastore:"suggestedSchedules,noindex"`
 
 	lunch struct {
 		once       sync.Once
@@ -49,4 +47,23 @@ type Conference struct {
 		byClass    map[int]*Lunch
 		byUnitType map[string]*Lunch
 	}
+}
+
+func (c *Conference) Date() time.Time {
+	return time.Date(c.Year, time.Month(c.Month), c.Day, 0, 0, 0, 0, TimeLocation)
+}
+
+func (c *Conference) setupLunch() {
+	c.lunch.once.Do(func() {
+		c.lunch.byClass = make(map[int]*Lunch)
+		c.lunch.byUnitType = make(map[string]*Lunch)
+		for _, l := range c.Lunches {
+			for _, n := range l.Classes {
+				c.lunch.byClass[n] = l
+			}
+			for _, unitType := range l.UnitTypes {
+				c.lunch.byUnitType[unitType] = l
+			}
+		}
+	})
 }

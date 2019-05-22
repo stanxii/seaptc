@@ -5,16 +5,46 @@ import (
 	"time"
 )
 
-/*
+const NumSession = 6
+
 type Session struct {
-    StartHour int `json:"startHour" firstore:"startHour"`
-    StartHour int `json:"startHour" firstore:"startHour"`
-    StartMinute int `json:"StartMinute" firstore:"startMinute"`
-    EndHour int `json:"endHour" firstore:"endHour"`
-    EndMinute int `json:"endMinute" firstore:"endMinute"`
-    Lunch bool `json:"lunch" firstore:"lunch"`
+	Start time.Duration
+	End   time.Duration
+	Lunch bool
 }
-*/
+
+var Sessions = []*Session{
+	{
+		9 * time.Hour,
+		10 * time.Hour,
+		false,
+	},
+	{
+		10*time.Hour + 10*time.Minute,
+		11*time.Hour + 10*time.Minute,
+		false,
+	},
+	{
+		11*time.Hour + 20*time.Minute,
+		13*time.Hour + 15*time.Minute,
+		true,
+	},
+	{
+		13*time.Hour + 25*time.Minute,
+		14*time.Hour + 25*time.Minute,
+		false,
+	},
+	{
+		14*time.Hour + 35*time.Minute,
+		15*time.Hour + 35*time.Minute,
+		false,
+	},
+	{
+		15*time.Hour + 45*time.Minute,
+		16*time.Hour + 45*time.Minute,
+		false,
+	},
+}
 
 var TimeLocation = timeLocation()
 
@@ -25,8 +55,6 @@ func timeLocation() *time.Location {
 	}
 	return l
 }
-
-const NumSession = 6
 
 const (
 	CubScoutProgram = iota
@@ -52,23 +80,31 @@ var ProgramDescriptions = []*ProgramDescription{
 	{"com", "Commissioners"},
 	{"you", "Youth"},
 
-	// AllProgram must be last in slice for ProgramDescriptions()
+	// AllProgram must be last in slice for programDescriptionsForMask()
 	{"all", "Everyone"},
 }
 
-func programDescriptionsForMask(mask int) []*ProgramDescription {
-	// AllProgram is at end of slice.
+func programDescriptionsForMask(mask int, reverse bool) []*ProgramDescription {
 	if (1<<NumPrograms)-1 == mask {
 		return ProgramDescriptions[NumPrograms:]
 	}
 
-	// Don't include AllProgram located at end of ProgramDescriptions slice.
-	// Return in reverse order for convenient layout of images in HTML.
 	var result []*ProgramDescription
-	for i := NumPrograms - 1; i >= 0; i-- {
+	for i := 0; i < NumPrograms; i++ {
 		if ((1 << uint(i)) & mask) != 0 {
 			result = append(result, ProgramDescriptions[i])
 		}
 	}
+
+	if reverse {
+		i := 0
+		j := len(result) - 1
+		for i < j {
+			result[i], result[j] = result[j], result[i]
+			i++
+			j--
+		}
+	}
+
 	return result
 }

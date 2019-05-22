@@ -1,25 +1,21 @@
 package model
 
-import "time"
-
 //go:generate go run gogen.go -input appconfig.go -output gen_appconfig.go AppConfig
 
 // AppConfig is loaded once at application startup.
 type AppConfig struct {
-	XSRFKey  string   `json:"xsrfKey" firestore:"xsrfKey"`
-	HMACKeys []string `json:"hmacKeys" firestore:"hmacKeys"`
-	AdminIDs []string `json:"adminIDs" firestore:"adminIDs"`
-	StaffIDs []string `json:"staffIDs" firestore:"staffIDs"`
+	XSRFKey  string   `json:"xsrfKey" datastore:"xsrfKey,noindex"`
+	HMACKeys []string `json:"hmacKeys" datastore:"hmacKeys,noindex"`
+	AdminIDs []string `json:"adminIDs" datastore:"adminIDs,noindex"`
+	StaffIDs []string `json:"staffIDs" datastore:"staffIDs,noindex"`
 
 	// Google Open ID for login
 	LoginClient struct {
-		ID     string `json:"id" firestore:"id"`
-		Secret string `json:"secret" firestore:"secret"`
-	} `json:"loginClient" firestore:"loginClient"`
+		ID     string `json:"id" datastore:"id,noindex"`
+		Secret string `json:"secret" datastore:"secret,noindex"`
+	} `json:"loginClient" datastore:"loginClient,noindex"`
 
 	// Planning spreadsheet
-	PlanningSheetURL               string `json:"planningSheetURL" firestore:"planningSheetURL"`
-	PlanningSheetServiceAccountKey string `json:"planningSheetServiceAccountKey" firestore:"planningSheetServiceAccountKey"`
-
-	LastUpdateTime time.Time `json:"lastUpdateTime" firestore:"lastUpdateTime,serverTimestamp"`
+	PlanningSheetURL               string `json:"planningSheetURL" datastore:"planningSheetURL,noindex"`
+	PlanningSheetServiceAccountKey string `json:"planningSheetServiceAccountKey" datastore:"planningSheetServiceAccountKey,noindex"`
 }

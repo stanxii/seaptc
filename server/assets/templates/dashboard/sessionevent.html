@@ -1,0 +1,4 @@
+{{define "ROOT"}}<p><b>{{.Number}}: {{with .New}}<span style="color: red;">{{.}}</span> {{end}}{{.Title}}{{with .TitleNotes}} ({{.}}){{end}}</b></p>
+<p>{{.Description}}</p>
+{{with .AppropriateFor}}<p>This class is most useful to {{.}}.</p>{{end}}
+<p><i>({{.Sessions}})</i></p>{{end}}

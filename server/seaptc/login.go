@@ -107,5 +107,5 @@ func (svc *loginService) Serve_login_callback(rc *requestContext) error {
 
 func (svc *loginService) Serve_logout(rc *requestContext) error {
 	svc.staffIDCodec.Encode(rc.response)
-	return rc.redirect("/", http.StatusSeeOther)
+	return rc.redirect("/dashboard", http.StatusSeeOther)
 }

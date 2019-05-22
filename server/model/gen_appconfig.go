@@ -9,6 +9,5 @@ const (
 	AppConfig_PlanningSheetServiceAccountKey = "planningSheetServiceAccountKey"
 	AppConfig_PlanningSheetURL               = "planningSheetURL"
 	AppConfig_StaffIDs                       = "staffIDs"
-	AppConfig_Timestamp                      = "timestamp"
 	AppConfig_XSRFKey                        = "xsrfKey"
 )

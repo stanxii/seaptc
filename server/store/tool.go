@@ -41,6 +41,21 @@ func main() {
 		if err := s.SetAppConfig(ctx, &config); err != nil {
 			log.Fatal(err)
 		}
+	case "conf-get":
+		conf, err := s.GetConference(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+		p, _ := json.MarshalIndent(conf, "", "  ")
+		fmt.Printf("%s\n", p)
+	case "conf-set":
+		var conf model.Conference
+		if err := json.NewDecoder(os.Stdin).Decode(&conf); err != nil {
+			log.Fatal(err)
+		}
+		if err := s.SetConference(ctx, &conf); err != nil {
+			log.Fatal(err)
+		}
 	default:
 		log.Fatalf("Unknown command %q, commands are config-get, config-set", flag.Arg(0))
 	}

@@ -3,37 +3,33 @@ package model
 import (
 	"fmt"
 	"sort"
-	"time"
 )
 
 //go:generate go run gogen.go -input class.go -output gen_class.go Class
 
 // Class represents a PTC class.
 //
-// The dk tag marks fields that contribute to the Doubleknot session event
-// definition. The nosheet tag marks fields that should not be copied from the
-// planning spreadsheet.
+// The DK tag marks fields that contribute to the Doubleknot session event
+// definition. The Sheet tag marks fields that are copied from the planning
+// spreadsheet.
 type Class struct {
-	Number           int      `json:"number" firestore:"number" fields:"Sheet"`
-	Length           int      `json:"length" firestore:"length" fields:"Sheet"`
-	Responsibility   string   `json:"responsibility"  firestore:"responsibility" fields:"Sheet"`
-	New              string   `json:"new" firestore:"new" fields:"Sheet"`
-	Title            string   `json:"title" firestore:"title" fields:"Sheet"`
-	TitleNotes       string   `json:"titleNotes" firestore:"titleNotes" fields:"Sheet"`
-	Description      string   `json:"description" firestore:"description" fields:"Sheet"`
-	Programs         int      `json:"programs" firestore:"programs" fields:"Sheet"`
-	Capacity         int      `json:"capacity" firestore:"capacity" fields:"Sheet"`
-	Location         string   `json:"location" firestore:"location" fields:"Sheet"`
-	SpreadsheetRow   int      `json:"-" firestore:"spreadsheetRow" fields:"Sheet"`
-	InstructorNames  []string `json:"instructorNames" firestore:"instructorNames" fields:"Sheet"`
-	InstructorEmails []string `json:"instructorEmails" firestore:"instructorEmails" fields:"Sheet"`
-	EvaluationCodes  []string `json:"evaluationCodes" firestore:"evaluationCodes" fields:"Sheet"`
-	AccessToken      string   `json:"accessToken" firestore:"accessToken" fields:"Sheet"`
+	Number           int      `json:"number" datastore:"number" fields:"Sheet"`
+	Length           int      `json:"length" datastore:"length" fields:"Sheet,DK"`
+	Responsibility   string   `json:"responsibility"  datastore:"responsibility" fields:"Sheet"`
+	New              string   `json:"new" datastore:"new,noindex" fields:"Sheet,DK"`
+	Title            string   `json:"title" datastore:"title" fields:"Sheet,DK"`
+	TitleNotes       string   `json:"titleNotes" datastore:"titleNotes,noindex" fields:"Sheet,DK"`
+	Description      string   `json:"description" datastore:"description,noindex" fields:"Sheet,DK"`
+	Programs         int      `json:"programs" datastore:"programs,noindex" fields:"Sheet,DK"`
+	Capacity         int      `json:"capacity" datastore:"capacity" fields:"Sheet,DK"`
+	Location         string   `json:"location" datastore:"location" fields:"Sheet"`
+	SpreadsheetRow   int      `json:"-" datastore:"spreadsheetRow,noindex" fields:"Sheet"`
+	InstructorNames  []string `json:"instructorNames" datastore:"instructorNames,noindex" fields:"Sheet"`
+	InstructorEmails []string `json:"instructorEmails" datastore:"instructorEmails,noindex" fields:"Sheet"`
+	EvaluationCodes  []string `json:"evaluationCodes" datastore:"evaluationCodes,noindex" fields:"Sheet"`
+	AccessToken      string   `json:"accessToken" datastore:"accessToken,noindex" fields:"Sheet"`
 
-	// DKHash is the hash of the fields last set on the Doubleknot session event description.
-	DKHash bool `json:"dkHash" firestore:"dkHash"`
-
-	LastUpdateTime time.Time `json:"lastUpdateTime" firestore:"lastUpdateTime,serverTimestamp"`
+	DKNeedsUpdate bool `json:"-" datastore:"dkNeedsUpdate"`
 }
 
 // Start returns zero based index of the starting session.
@@ -68,18 +64,11 @@ func (c *Class) PartOfLength(format string, session int) string {
 	return fmt.Sprintf(format, session-c.Start()+1, c.Length)
 }
 
-func (c *Class) ProgramDescriptions() []*ProgramDescription {
-	return programDescriptionsForMask(c.Programs)
+func (c *Class) ProgramDescriptions(reverse bool) []*ProgramDescription {
+	return programDescriptionsForMask(c.Programs, reverse)
 }
 
-func SortedClasses(m map[int]*Class, what string) []*Class {
-	classes := make([]*Class, len(m))
-	i := 0
-	for _, class := range m {
-		classes[i] = class
-		i++
-	}
-
+func SortClasses(classes []*Class, what string) []*Class {
 	switch what {
 	case Class_Location:
 		sort.Slice(classes, func(i, j int) bool { return classes[i].Location < classes[j].Location })

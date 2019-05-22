@@ -1,0 +1,11 @@
+indexes:
+- kind: "class"
+  ancestor: yes
+  properties:
+  - name: "capacity"
+  - name: "dkNeedsUpdate"
+  - name: "length"
+  - name: "location"
+  - name: "number"
+  - name: "responsibility"
+  - name: "title"

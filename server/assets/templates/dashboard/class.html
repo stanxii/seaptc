@@ -17,7 +17,7 @@
     <tr><th>Instructor link</th><td><a href="{{.InstructorURL}}">{{.InstructorURL}}</a></td></tr>
   {{end}}
   {{if .InstructorView}}
-    <tr><th>Evaluation codes</th><td>{{range $i, $c := .EvaluationCodes}}{{if $i}}, {{end}}{{.}}{{end}}</td></tr>
+    <tr><th>Evaluation codes</th><td>{{range $i, $c := .Class.EvaluationCodes}}{{if $i}}, {{end}}{{.}}{{end}}</td></tr>
     <tr><th>Participant email</th><td>{{range $i, $p := .Participants}}{{if $i}}, {{end}}{{.Email}}{{end}}</td></tr>
   {{end}}
 </table>

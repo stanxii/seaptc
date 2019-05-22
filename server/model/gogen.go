@@ -21,9 +21,9 @@ import (
 )
 
 type fieldInfo struct {
-	Go        string
-	Firestore string
-	Type      string
+	Go    string
+	Store string
+	Type  string
 }
 
 var equalExceptions = map[string]string{
@@ -77,18 +77,16 @@ package model
 {{range $type := .}}
 const (
     {{range $type.Fields -}}
-    {{$type.Name}}_{{.Go}} = {{printf "%q" .Firestore}}
+    {{$type.Name}}_{{.Go}} = {{printf "%q" .Store}}
     {{end}}
 )
 {{end}}
 
 {{range $type := .}}{{range $name, $fields := $type.FieldSets -}}
-    func (x *{{$type.Name}}) {{$name}}Fields() map[string]interface{} {
-        return map[string]interface{}{
-            {{range $fields -}}
-                {{printf "%q" .Firestore}}: x.{{.Go}},
-            {{end -}}
-        }
+    func (x *{{$type.Name}}) Copy{{$name}}Fields(y *{{$type.Name}}) {
+        {{range $fields -}}
+            x.{{.Go}} = y.{{.Go}}
+        {{end -}}
     }
 
     func (x *{{$type.Name}}) Equal{{$name}}Fields(y *{{$type.Name}}) bool {
@@ -132,15 +130,15 @@ func main() {
 					log.Fatalf("%s: missing field tag %s.%s", *input, typeName, name.Name)
 				}
 				tag := reflect.StructTag(f.Tag.Value)
-				firestoreName := strings.Split(tag.Get("firestore"), ",")[0]
-				if firestoreName == "" {
-					log.Fatalf("%s: missing firestore name for %s.%s", *input, typeName, name.Name)
+				storeName := strings.Split(tag.Get("datastore"), ",")[0]
+				if storeName == "" {
+					log.Fatalf("%s: missing datastore name for %s.%s", *input, typeName, name.Name)
 				}
 
 				var buf bytes.Buffer
 				printer.Fprint(&buf, fset, f.Type)
 
-				field := &fieldInfo{Go: name.Name, Firestore: firestoreName, Type: buf.String()}
+				field := &fieldInfo{Go: name.Name, Store: storeName, Type: buf.String()}
 				ti.Fields = append(ti.Fields, field)
 				if tag := tag.Get("fields"); tag != "" {
 					for _, set := range strings.Split(tag, ",") {

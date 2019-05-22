@@ -5,7 +5,7 @@ package model
 const (
 	Class_AccessToken      = "accessToken"
 	Class_Capacity         = "capacity"
-	Class_DKHash           = "dkHash"
+	Class_DKNeedsUpdate    = "dkNeedsUpdate"
 	Class_Description      = "description"
 	Class_EvaluationCodes  = "evaluationCodes"
 	Class_InstructorEmails = "instructorEmails"
@@ -17,29 +17,46 @@ const (
 	Class_Programs         = "programs"
 	Class_Responsibility   = "responsibility"
 	Class_SpreadsheetRow   = "spreadsheetRow"
-	Class_Timestamp        = "timestamp"
 	Class_Title            = "title"
 	Class_TitleNotes       = "titleNotes"
 )
 
-func (x *Class) SheetFields() map[string]interface{} {
-	return map[string]interface{}{
-		"accessToken":      x.AccessToken,
-		"capacity":         x.Capacity,
-		"description":      x.Description,
-		"evaluationCodes":  x.EvaluationCodes,
-		"instructorEmails": x.InstructorEmails,
-		"instructorNames":  x.InstructorNames,
-		"length":           x.Length,
-		"location":         x.Location,
-		"new":              x.New,
-		"number":           x.Number,
-		"programs":         x.Programs,
-		"responsibility":   x.Responsibility,
-		"spreadsheetRow":   x.SpreadsheetRow,
-		"title":            x.Title,
-		"titleNotes":       x.TitleNotes,
-	}
+func (x *Class) CopyDKFields(y *Class) {
+	x.Capacity = y.Capacity
+	x.Description = y.Description
+	x.Length = y.Length
+	x.New = y.New
+	x.Programs = y.Programs
+	x.Title = y.Title
+	x.TitleNotes = y.TitleNotes
+}
+
+func (x *Class) EqualDKFields(y *Class) bool {
+	return x.Capacity == y.Capacity &&
+		x.Description == y.Description &&
+		x.Length == y.Length &&
+		x.New == y.New &&
+		x.Programs == y.Programs &&
+		x.Title == y.Title &&
+		x.TitleNotes == y.TitleNotes
+}
+
+func (x *Class) CopySheetFields(y *Class) {
+	x.AccessToken = y.AccessToken
+	x.Capacity = y.Capacity
+	x.Description = y.Description
+	x.EvaluationCodes = y.EvaluationCodes
+	x.InstructorEmails = y.InstructorEmails
+	x.InstructorNames = y.InstructorNames
+	x.Length = y.Length
+	x.Location = y.Location
+	x.New = y.New
+	x.Number = y.Number
+	x.Programs = y.Programs
+	x.Responsibility = y.Responsibility
+	x.SpreadsheetRow = y.SpreadsheetRow
+	x.Title = y.Title
+	x.TitleNotes = y.TitleNotes
 }
 
 func (x *Class) EqualSheetFields(y *Class) bool {
