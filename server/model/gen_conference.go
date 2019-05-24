@@ -4,7 +4,6 @@ package model
 
 const (
 	Conference_Day                = "day"
-	Conference_LastUpdateTime     = "lastUpdateTime"
 	Conference_Lunches            = "lunches"
 	Conference_Month              = "month"
 	Conference_SuggestedSchedules = "suggestedSchedules"

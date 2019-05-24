@@ -19,7 +19,7 @@
 {{end}}
 
 {{define "classDesc"}}<tr><th valign="top" id="c{{.Number}}">{{.Number}}</th><td valign="top">
-  {{range .ProgramInfos}}<img style="float:right;" src="https://seaptc.org/static/program/{{.Code}}.png" title="{{.Title}}">{{end}}
+  {{range .ProgramDescriptions true}}<img style="float:right;" src="https://seaptc.org/static/program/{{.Code}}.png" title="{{.Name}}">{{end}}
   <strong>{{with .New}}<font color="red">{{.}}</font> {{end}}{{.Title}}{{with .TitleNotes}} ({{.}}){{end}}</strong> &mdash; {{.Description}}
     <em>(
       {{- if le .Length 1}}1&nbsp;hour, session&nbsp;{{add .End 1}}
@@ -30,4 +30,12 @@
   </td></tr>
 {{end}}
 
-{{define "register"}}{{with $.Data.RegisterURL}}<p><a href="{{.}}" class="btn btn-primary btn-large">Register Now!</a>{{end}}{{end}}
+{{define "key" -}}
+<h4 id="key">Program Icon Key</h4>
+<table class="table">
+{{- range .}}
+<tr><td><img src="/static/program/{{.Code}}.png"></td><td>{{.Name}}</td></tr>
+{{- end}}
+{{- end}}
+
+{{define "register"}}{{with .Conference.RegistrationURL}}<p><a href="{{.}}" class="btn btn-primary btn-large">Register Now!</a>{{end}}{{end}}

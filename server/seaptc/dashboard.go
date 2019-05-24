@@ -113,7 +113,7 @@ func (svc *dashboardService) Serve_dashboard_classes_(rc *requestContext) error 
 	return rc.respond(svc.templates.Class, http.StatusOK, &data)
 }
 
-func (svc *dashboardService) Serve_dashboard_classes_refresh(rc *requestContext) error {
+func (svc *dashboardService) Serve_dashboard_refresh__classes(rc *requestContext) error {
 	if rc.request.Method != "POST" {
 		return httperror.ErrMethodNotAllowed
 	}
@@ -139,11 +139,11 @@ func (svc *dashboardService) Serve_dashboard_classes_refresh(rc *requestContext)
 }
 
 func (svc *dashboardService) Serve_dashboard_sessionevents_(rc *requestContext) error {
+	h := rc.response.Header()
+	h.Set("Access-Control-Allow-Origin", "*")
+	h.Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	h.Set("Access-Control-Allow-Headers", "*")
 	if rc.request.Method == "OPTIONS" {
-		h := rc.response.Header()
-		h.Set("Access-Control-Allow-Origin", "*")
-		h.Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-		h.Set("Access-Control-Allow-Headers", "*")
 		rc.response.WriteHeader(http.StatusNoContent)
 		return nil
 	}

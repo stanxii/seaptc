@@ -41,6 +41,8 @@ type Conference struct {
 	// number, nnn! is a required class number.
 	SuggestedSchedules string `json:"suggestedSchedules" datastore:"suggestedSchedules,noindex"`
 
+	RegistrationURL string `json:"registrationURL" datastore:"registrationURL,noindex"`
+
 	lunch struct {
 		once       sync.Once
 		def        *Lunch

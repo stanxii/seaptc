@@ -110,7 +110,9 @@ func newApplication(ctx context.Context, st *store.Store, devMode bool, assetDir
 			if f == nil {
 				return nil, fmt.Errorf("could not create handler for %v.%s", t, m.Name)
 			}
-			path := strings.Replace(strings.TrimPrefix(m.Name, "Serve"), "_", "/", -1)
+			// Convert __ to - and _ to /.
+			path := strings.ReplaceAll(strings.TrimPrefix(m.Name, "Serve"), "__", "-")
+			path = strings.ReplaceAll(path, "_", "/")
 			mux.Handle(path, &handler{application: &a, svc: svc, f: f})
 		}
 	}

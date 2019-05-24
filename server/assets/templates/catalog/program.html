@@ -1,15 +1,16 @@
-{{define "title"}}Progam &amp; Tranining Conference: {{$.Data.ProgramNameTitleCase}}{{end}}
-{{define "body"}}{{with $.Data}}
+{{define "title"}}Progam &amp; Tranining Conference: {{.Title}}{{end}}
+{{define "body"}}
 
-  <h2>{{.ProgramNameTitleCase}}</h2>
+  <h2>{{.Title}}</h2>
   <p>You are welcome to take any classes at PTC that interest you, but this page
-  focuses on classes most useful to {{.ProgramName}}.
+  focuses on classes most useful to {{.Program.Name}}.
 
   {{with .SuggestedSchedules}}
     <h3>Suggested Schedules</h3>
     <p><sup>†</sup> These classes are not part of your basic training and you may wish to substitute a different class.
 
     {{range .}}
+      <h4>{{.Name}}</h4>
       <ul style="list-style:none">
       {{range .}}
         <li><a href="#c{{.Number}}">{{.Number}}</a> – {{.Title}}
@@ -24,10 +25,10 @@
   {{template "register"}}
 
   <h3>Class Descriptions</h3>
-  <p>These classes are most useful for {{.ProgramName}}. 
+  <p>These classes are most useful for {{.Program.Name}}. 
   A complete list of classes is available <a href="/catalog/all">here</a>.
   <table class="table">
   {{range .Classes}}{{template "classDesc" .}}{{end}}
   </table>
 
-{{end}}{{end}}
+{{end}}

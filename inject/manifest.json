@@ -1,0 +1,23 @@
+{
+  "name": "Inject",
+  "version": "0.0.1",
+  "manifest_version": 2,
+  "description": "Inject script",
+  "homepage_url": "http://seattlebsa.org/ptc",
+  "background": {
+    "scripts": [
+      "background.js"
+    ],
+    "persistent": true
+  },
+  "web_accessible_resources": [
+    "inject.js"
+  ],
+  "browser_action": {
+    "default_title": "Inject!"
+  },
+  "permissions": [
+    "activeTab"
+  ]
+}
+

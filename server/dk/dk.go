@@ -68,7 +68,7 @@ var setters = []struct {
 	{"How did you hear about the PTC?:Council website", addMarketing},
 	{"How did you hear about the PTC?:Attended before", addMarketing},
 	{"How did you hear about the PTC?:Wood Badge", addMarketing},
-	//XXX {"How did you hear about the PTC?:Other", addMarketing},
+	{"What other ways did you hear about the PTC?", addMarketing},
 
 	{"Which classes are you teaching?", func(r *participant, s string) { r.instructorDescription = s }},
 	{"Which organization are you representing on the midway?", func(r *participant, s string) { r.midwayDescription = s }},

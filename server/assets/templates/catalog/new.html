@@ -1,13 +1,15 @@
-{{define "title"}}Progam &amp; Tranining Conference: New{{end}}
-{{define "body"}}{{with $.Data}}
-  <h2>New</h2>
+{{define "title"}}Progam &amp; Tranining Conference: New Classes{{end}}
+{{define "body"}}
+<h2>New</h2>
 
-  <p>Here's a list of what's new at the {{fmtTime "2006" .ConferenceDate}} Program &amp; Training Conference. 
-  See <a href="/catalog/all">this page</a> for a list of all classes.
+<p>Here's a list of what's new at the {{fmtTime "2006" .Conference.Date}} Program &amp; Training Conference. 
+See <a href="/catalog/all">this page</a> for a list of all classes.
 
-  {{template "register"}}
+{{template "register" .}}
 
-  <table class="table">
-  {{range .Classes}}{{template "classDesc" .}}{{end}}
-  </table>
+<table class="table">
+{{range .Classes}}{{if .New}}{{template "classDesc" .}}{{end}}{{end}}
+</table>
+
+{{template "key" .Key}}
 {{end}}

@@ -16,6 +16,7 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -129,7 +130,11 @@ func main() {
 				if f.Tag == nil {
 					log.Fatalf("%s: missing field tag %s.%s", *input, typeName, name.Name)
 				}
-				tag := reflect.StructTag(f.Tag.Value)
+				unquoted, err := strconv.Unquote(f.Tag.Value)
+				if err != nil {
+					log.Fatalf("%s: error parsing field tag %s.%s: %v", *input, typeName, name.Name, err)
+				}
+				tag := reflect.StructTag(unquoted)
 				storeName := strings.Split(tag.Get("datastore"), ",")[0]
 				if storeName == "" {
 					log.Fatalf("%s: missing datastore name for %s.%s", *input, typeName, name.Name)

@@ -25,10 +25,17 @@
   </table>
 
   {{if $.IsStaff -}}
-    <form class="form-inline mb-3" action="/dashboard/classes/refresh" class="form-inline" method="post">
-      {{$.XSRFToken "/dashboard/classes/refresh"}}
+    <form class="form-inline mb-3" action="/dashboard/refresh-classes" class="form-inline" method="post">
+      {{$.XSRFToken "/dashboard/refresh-classes"}}
       <input type="hidden" name="ref" value="{{$.Request.URL.RequestURI}}">
       <button type="submit" class="btn btn-outline-secondary">Reload classes from spreadsheet</button>
+    </form>
+  {{end}}
+  {{if $.IsAdmin -}}
+    <form class="form-inline mb-3" action="/dashboard/rebuild-catalog" class="form-inline" method="post">
+      {{$.XSRFToken "/dashboard/rebuild-catalog"}}
+      <input type="hidden" name="ref" value="{{$.Request.URL.RequestURI}}">
+      <button type="submit" class="btn btn-outline-secondary">Rebuild class catalog</button>
     </form>
   {{end}}
 {{end}}
