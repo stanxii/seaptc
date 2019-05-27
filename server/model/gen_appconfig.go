@@ -4,10 +4,16 @@ package model
 
 const (
 	AppConfig_AdminIDs                       = "adminIDs"
+	AppConfig_ClassesSheetURL                = "classesSheetURL"
 	AppConfig_HMACKeys                       = "hmacKeys"
+	AppConfig_Junk1                          = "year"
+	AppConfig_Junk2                          = "planningSheetKey"
+	AppConfig_Junk3                          = "classesURL"
+	AppConfig_Junk4                          = "suggestedScheduleURL"
+	AppConfig_Junk5                          = "planningSheetURL"
 	AppConfig_LoginClient                    = "loginClient"
 	AppConfig_PlanningSheetServiceAccountKey = "planningSheetServiceAccountKey"
-	AppConfig_PlanningSheetURL               = "planningSheetURL"
 	AppConfig_StaffIDs                       = "staffIDs"
+	AppConfig_SuggestedSchedulesSheetURL     = "suggestedScheduleSheetURL"
 	AppConfig_XSRFKey                        = "xsrfKey"
 )

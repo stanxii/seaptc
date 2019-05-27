@@ -9,19 +9,17 @@ import (
 
 // Class represents a PTC class.
 //
-// The DK tag marks fields that contribute to the Doubleknot session event
-// definition. The Sheet tag marks fields that are copied from the planning
-// spreadsheet.
+// The Sheet tag marks fields that are copied from the planning spreadsheet.
 type Class struct {
 	Number           int      `json:"number" datastore:"number" fields:"Sheet"`
-	Length           int      `json:"length" datastore:"length" fields:"Sheet,DK"`
+	Length           int      `json:"length" datastore:"length" fields:"Sheet"`
 	Responsibility   string   `json:"responsibility"  datastore:"responsibility" fields:"Sheet"`
-	New              string   `json:"new" datastore:"new,noindex" fields:"Sheet,DK"`
-	Title            string   `json:"title" datastore:"title" fields:"Sheet,DK"`
-	TitleNotes       string   `json:"titleNotes" datastore:"titleNotes,noindex" fields:"Sheet,DK"`
-	Description      string   `json:"description" datastore:"description,noindex" fields:"Sheet,DK"`
-	Programs         int      `json:"programs" datastore:"programs,noindex" fields:"Sheet,DK"`
-	Capacity         int      `json:"capacity" datastore:"capacity" fields:"Sheet,DK"`
+	New              string   `json:"new" datastore:"new,noindex" fields:"Sheet"`
+	Title            string   `json:"title" datastore:"title" fields:"Sheet"`
+	TitleNote        string   `json:"titleNote" datastore:"titleNote,noindex" fields:"Sheet"`
+	Description      string   `json:"description" datastore:"description,noindex" fields:"Sheet"`
+	Programs         int      `json:"programs" datastore:"programs,noindex" fields:"Sheet"`
+	Capacity         int      `json:"capacity" datastore:"capacity" fields:"Sheet"`
 	Location         string   `json:"location" datastore:"location" fields:"Sheet"`
 	SpreadsheetRow   int      `json:"-" datastore:"spreadsheetRow,noindex" fields:"Sheet"`
 	InstructorNames  []string `json:"instructorNames" datastore:"instructorNames,noindex" fields:"Sheet"`
@@ -29,7 +27,8 @@ type Class struct {
 	EvaluationCodes  []string `json:"evaluationCodes" datastore:"evaluationCodes,noindex" fields:"Sheet"`
 	AccessToken      string   `json:"accessToken" datastore:"accessToken,noindex" fields:"Sheet"`
 
-	DKNeedsUpdate bool `json:"-" datastore:"dkNeedsUpdate"`
+	Junk1 bool   `json:"-" datastore:"dkNeedsUpdate,omitempty"`
+	Junk2 string `json:"-" datastore:"titleNotes,omitempty"`
 }
 
 // Start returns zero based index of the starting session.

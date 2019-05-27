@@ -41,8 +41,7 @@ var (
 		model.Class_Title,
 		model.Class_Capacity,
 		model.Class_Location,
-		model.Class_Responsibility,
-		model.Class_DKNeedsUpdate)
+		model.Class_Responsibility)
 	allClassesFullQuery = datastore.NewQuery(classKind).Ancestor(classesEntityGroupKey)
 )
 
@@ -68,7 +67,7 @@ func (store *Store) GetAllClassesFull(ctx context.Context) ([]*model.Class, erro
 	return store.getAllClasses(ctx, allClassesFullQuery)
 }
 
-func (store *Store) UpdateClassesFromSheet(ctx context.Context, classes []*model.Class) (int, error) {
+func (store *Store) UpdateClassesFromSheet(ctx context.Context, classes []*model.Class, updateAll bool) (int, error) {
 	if len(classes) < 20 {
 		return 0, fmt.Errorf("store: more classes expected for update")
 	}
@@ -95,15 +94,12 @@ func (store *Store) UpdateClassesFromSheet(ctx context.Context, classes []*model
 		for _, c := range classes {
 			xc, ok := m[c.Number]
 			if !ok {
-				c.DKNeedsUpdate = true
 				mutations = append(mutations, datastore.NewUpsert(classKey(c.Number), (*dsClass)(c)))
 				continue
 			}
-			if !xc.EqualSheetFields(c) {
+			if updateAll || !xc.EqualSheetFields(c) {
 				xc.CopySheetFields(c)
-				if !xc.EqualDKFields(c) {
-					xc.DKNeedsUpdate = true
-				}
+				c.Junk1 = false // XXX
 				mutations = append(mutations, datastore.NewUpsert(classKey(xc.Number), (*dsClass)(xc)))
 			}
 			delete(m, c.Number)

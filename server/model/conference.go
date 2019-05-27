@@ -35,13 +35,9 @@ type Conference struct {
 	Month int `json:"month" datastore:"month,noindex"`
 	Day   int `json:"day" datastore:"day,noindex"`
 
-	// String with lines in the following format:
-	//  code nnn,nnn!,nnn description
-	// where code is a program code (cub, bsa, ven, ...), nnn is a class
-	// number, nnn! is a required class number.
-	SuggestedSchedules string `json:"suggestedSchedules" datastore:"suggestedSchedules,noindex"`
-
 	RegistrationURL string `json:"registrationURL" datastore:"registrationURL,noindex"`
+
+	SuggestedSchedules string `datastore:"SuggestedSchedules,omitempty"`
 
 	lunch struct {
 		once       sync.Once

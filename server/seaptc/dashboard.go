@@ -1,11 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -20,11 +19,12 @@ import (
 type dashboardService struct {
 	*application
 	templates struct {
-		Index        *templates.Template `html:"dashboard/index.html dashboard/root.html common.html"`
-		Error        *templates.Template `html:"dashboard/error.html dashboard/root.html common.html"`
-		Classes      *templates.Template `html:"dashboard/classes.html dashboard/root.html common.html"`
-		Class        *templates.Template `html:"dashboard/class.html dashboard/root.html common.html"`
-		SessionEvent *templates.Template `html:"dashboard/sessionevent.html"`
+		Index      *templates.Template `html:"dashboard/index.html dashboard/root.html common.html"`
+		Error      *templates.Template `html:"dashboard/error.html dashboard/root.html common.html"`
+		Classes    *templates.Template `html:"dashboard/classes.html dashboard/root.html common.html"`
+		Class      *templates.Template `html:"dashboard/class.html dashboard/root.html common.html"`
+		Admin      *templates.Template `html:"dashboard/admin.html dashboard/root.html common.html"`
+		Conference *templates.Template `html:"dashboard/conference.html dashboard/root.html common.html"`
 	}
 }
 
@@ -121,130 +121,87 @@ func (svc *dashboardService) Serve_dashboard_refresh__classes(rc *requestContext
 		return httperror.ErrForbidden
 	}
 
-	classes, err := sheet.Fetch(rc.context(), svc.config)
+	classes, err := sheet.GetClasses(rc.context(), svc.config)
 	if err != nil {
 		return err
 	}
-	n, err := svc.store.UpdateClassesFromSheet(rc.context(), classes)
+	n, err := svc.store.UpdateClassesFromSheet(rc.context(), classes, rc.request.FormValue("all") != "")
 	if err != nil {
 		return err
 	}
-	rc.setFlashMessage("info", "%d classes loaded from sheet, %d modified", len(classes), n)
 
-	ref := rc.request.FormValue("ref")
-	if ref == "" {
-		ref = "/dashboard/classes"
-	}
-	return rc.redirect(ref, http.StatusSeeOther)
+	return rc.redirect("/dashboard/classes", "info", "%d classes loaded from sheet, %d modified", len(classes), n)
 }
 
-func (svc *dashboardService) Serve_dashboard_sessionevents_(rc *requestContext) error {
-	h := rc.response.Header()
-	h.Set("Access-Control-Allow-Origin", "*")
-	h.Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-	h.Set("Access-Control-Allow-Headers", "*")
-	if rc.request.Method == "OPTIONS" {
-		rc.response.WriteHeader(http.StatusNoContent)
-		return nil
-	}
-
-	class, err := svc.getClass(rc, "/dashboard/sessionevents/")
-	if err != nil {
-		return err
+func (svc *dashboardService) Serve_dashboard_conference(rc *requestContext) error {
+	if !rc.isAdmin {
+		return httperror.ErrForbidden
 	}
 	conf, err := svc.store.GetConference(rc.context())
 	if err != nil {
 		return err
 	}
 
-	date := conf.Date()
-	start := date.Add(model.Sessions[class.Start()].Start)
-	end := date.Add(model.Sessions[class.End()].End)
-
-	description := fmt.Sprintf("%d: %s", class.Number, class.Title)
-	if class.TitleNotes != "" {
-		description = fmt.Sprintf("%s (%s)", description, class.TitleNotes)
-	}
-
-	var maxEventAttendees string
-	switch {
-	case class.Capacity < 0:
-		// canceled or disabled
-		maxEventAttendees = "0"
-	case class.Capacity > 0:
-		// explicity capacity, zero is infinite
-		maxEventAttendees = strconv.Itoa(class.Capacity)
-	}
-
-	noteData := struct {
-		*model.Class
-		AppropriateFor string
-		Sessions       string
+	rc.request.ParseForm()
+	data := struct {
+		Form       url.Values
+		Invalid    map[string]string
+		Conference *model.Conference
+		Programs   []*model.ProgramDescription
 	}{
-		Class: class,
+		rc.request.Form,
+		make(map[string]string),
+		conf,
+		model.ProgramDescriptions,
 	}
 
-	programs := class.ProgramDescriptions(false)
-	if len(programs) > 0 && programs[0].Code != "all" {
-		var buf []byte
-		for i, p := range programs {
-			if i == 0 {
-				// no separator
-			} else if i == len(programs)-1 {
-				buf = append(buf, " and "...)
-			} else {
-				buf = append(buf, ", "...)
-			}
-			buf = append(buf, p.Name...)
+	if rc.request.Method != "POST" {
+		data.Form.Set("year", strconv.Itoa(conf.Year))
+		data.Form.Set("month", strconv.Itoa(conf.Month))
+		data.Form.Set("day", strconv.Itoa(conf.Day))
+		return rc.respond(svc.templates.Conference, http.StatusOK, &data)
+	}
+
+	setInt := func(pi *int, key string) {
+		var err error
+		*pi, err = strconv.Atoi(data.Form.Get(key))
+		if err != nil {
+			data.Invalid[key] = "is-invalid"
 		}
-		noteData.AppropriateFor = string(buf)
+	}
+	setInt(&conf.Year, "year")
+	setInt(&conf.Month, "month")
+	setInt(&conf.Day, "day")
+	conf.RegistrationURL = data.Form.Get("registrationURL")
+	if len(data.Invalid) > 0 {
+		return rc.respond(svc.templates.Conference, http.StatusOK, &data)
 	}
 
-	if class.Length <= 1 {
-		noteData.Sessions = fmt.Sprintf("1 hour, session %d", class.Start()+1)
-	} else {
-		noteData.Sessions = fmt.Sprintf("%d hours, sessions %d – %d", class.Length, class.Start()+1, class.End()+1)
-	}
-
-	var note bytes.Buffer
-	if err := svc.templates.SessionEvent.Execute(&note, &noteData); err != nil {
-		return err
-	}
-
-	data := map[string]string{
-		"Description":           description,
-		"ActivityDate":          date.Format("1/2/2006"),
-		"EndDate":               date.Format("1/2/2006"),
-		"AllowRegEdit":          "on",
-		"Notes":                 note.String(),
-		"Address":               "9600 College Way North",
-		"City":                  "Seattle",
-		"State":                 "WA",
-		"Postal_Code":           "98103",
-		"Country":               "US",
-		"RegistrationStartDate": fmt.Sprintf("1/1/%d", conf.Year),
-		"RegistrationStartHour": "12",
-		"RegistrationStartMin":  "10",
-		"RegistrationStartAMPM": "AM",
-		"RegisterByDate":        date.Format("1/2/2006"),
-		"RegisterByHour":        "10",
-		"RegisterByMin":         "0",
-		"RegisterByAMPM":        "AM",
-		"ActivityFromHour":      start.Format("3"),
-		"ActivityFromMin":       start.Format("4"),
-		"ActivityFromAMPM":      start.Format("PM"),
-		"ActivityTillHour":      end.Format("3"),
-		"ActivityTillMin":       end.Format("4"),
-		"ActivityTillAMPM":      end.Format("PM"),
-		"MaxAttendees":          maxEventAttendees,
-	}
-
-	p, err := json.MarshalIndent(data, "", "  ")
+	err = svc.store.SetConference(rc.context(), conf)
 	if err != nil {
 		return err
 	}
 
-	rc.response.Header().Set("Content-Type", "application/json")
-	rc.response.Write(p)
-	return nil
+	return rc.redirect(rc.request.URL.Path, "info", "Conference updated.")
+}
+
+func (svc *dashboardService) Serve_dashboard_admin(rc *requestContext) error {
+	if !rc.isAdmin {
+		return httperror.ErrForbidden
+	}
+	data := struct {
+	}{}
+	return rc.respond(svc.templates.Admin, http.StatusOK, &data)
+}
+
+func (svc *dashboardService) handleSessionEventsCORS(rc *requestContext) bool {
+	h := rc.response.Header()
+	h.Set("Access-Control-Allow-Origin", "*")
+	h.Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	h.Set("Access-Control-Allow-Headers", "*")
+	if rc.request.Method != "OPTIONS" {
+		return false
+	}
+	rc.response.WriteHeader(http.StatusNoContent)
+	return true
 }

@@ -1,4 +1,4 @@
-{{define "title"}}PTC Classes{{end}}
+{{define "title"}}PTC: Classes{{end}}
 {{define "body"}}
   <h3>Classes</h3>
   <p>
@@ -24,18 +24,5 @@
     </tbody>
   </table>
 
-  {{if $.IsStaff -}}
-    <form class="form-inline mb-3" action="/dashboard/refresh-classes" class="form-inline" method="post">
-      {{$.XSRFToken "/dashboard/refresh-classes"}}
-      <input type="hidden" name="ref" value="{{$.Request.URL.RequestURI}}">
-      <button type="submit" class="btn btn-outline-secondary">Reload classes from spreadsheet</button>
-    </form>
-  {{end}}
-  {{if $.IsAdmin -}}
-    <form class="form-inline mb-3" action="/dashboard/rebuild-catalog" class="form-inline" method="post">
-      {{$.XSRFToken "/dashboard/rebuild-catalog"}}
-      <input type="hidden" name="ref" value="{{$.Request.URL.RequestURI}}">
-      <button type="submit" class="btn btn-outline-secondary">Rebuild class catalog</button>
-    </form>
-  {{end}}
+  {{template "refreshClassesButton" $}}
 {{end}}

@@ -27,7 +27,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	classes, err := sheet.Fetch(context.Background(), config)
+	classes, err := sheet.GetClasses(context.Background(), config)
 	if err != nil {
 		log.Fatal(err)
 	}

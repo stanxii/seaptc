@@ -12,19 +12,19 @@
 </head>
 <body>
   {{$path := .Request.URL.Path}}
-  <nav class="navbar navbar-expand-sm navbar-light mb-3 d-print-none" style="background-color: #82b5d4;">
+  <nav class="navbar navbar-expand-sm navbar-dark bg-primary mb-3 d-print-none">
     <div class="container">
     <div class="navbar-nav">
-      <a class="nav-item nav-link {{if eq $path "/"}} active{{end}}" href="/">PTC</a>
+      <a class="nav-item nav-link {{if eq $path "/dashboard"}} active{{end}}" href="/dashboard">PTC</a>
       <a class="nav-item nav-link {{if eq $path "/dashboard/classes"}} active{{end}}" href="/dashboard/classes">Classes</a>
       {{if .IsStaff}}<a class="nav-item nav-link {{if eq $path "/dashboard/participants"}} active{{end}}" href="/dashboard/participants">Participants</a>{{end}}
       {{if .IsStaff}}<a class="nav-item nav-link {{if eq $path "/dashboard/instructors"}} active{{end}}" href="/dashboard/instructors">Instructors</a>{{end}}
       {{if .IsAdmin}}<a class="nav-item nav-link {{if eq $path "/dashboard/admin"}} active{{end}}" href="/dashboard/admin">Admin</a>{{end}}
     </div>
     {{- if .IsStaff}}
-      <a class="nav-item btn btn-outline-secondary" href="/logout?ref={{.Request.URL.RequestURI}}">Logout</a>
+      <a class="nav-item btn btn-outline-light" href="/logout?ref={{.Request.URL.RequestURI}}">Logout</a>
     {{- else}}
-      <a class="nav-item btn btn-outline-secondary" href="/login?ref={{.Request.URL.RequestURI}}">Staff Login</a>
+      <a class="nav-item btn btn-outline-light" href="/login?ref={{.Request.URL.RequestURI}}">Staff Login</a>
     {{- end -}}
   </nav>
   <div class="container" id="body">{{template "flash" $}}{{block "body" $}}{{end}}</div>
@@ -36,4 +36,10 @@
 </html>
 {{end}}
 
-
+{{define "refreshClassesButton"}}{{if $.IsStaff -}}
+    <form class="form-inline mb-3" action="/dashboard/refresh-classes" class="form-inline" method="post">
+      {{$.XSRFToken "/dashboard/refresh-classes"}}
+      <input type="hidden" name="_ref" value="{{$.Request.URL.RequestURI}}">
+      <button type="submit" class="btn btn-outline-secondary">Reload classes from spreadsheet</button>
+    </form>
+{{end}}{{end}}

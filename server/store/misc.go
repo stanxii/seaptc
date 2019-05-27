@@ -29,6 +29,7 @@ func (store *Store) GetConference(ctx context.Context) (*model.Conference, error
 }
 
 func (store *Store) SetConference(ctx context.Context, conf *model.Conference) error {
+	conf.SuggestedSchedules = ""
 	_, err := store.dsClient.Put(ctx, miscKey("conference"), conf)
 	return err
 }

@@ -5,11 +5,12 @@ package model
 const (
 	Class_AccessToken      = "accessToken"
 	Class_Capacity         = "capacity"
-	Class_DKNeedsUpdate    = "dkNeedsUpdate"
 	Class_Description      = "description"
 	Class_EvaluationCodes  = "evaluationCodes"
 	Class_InstructorEmails = "instructorEmails"
 	Class_InstructorNames  = "instructorNames"
+	Class_Junk1            = "dkNeedsUpdate"
+	Class_Junk2            = "titleNotes"
 	Class_Length           = "length"
 	Class_Location         = "location"
 	Class_New              = "new"
@@ -18,28 +19,8 @@ const (
 	Class_Responsibility   = "responsibility"
 	Class_SpreadsheetRow   = "spreadsheetRow"
 	Class_Title            = "title"
-	Class_TitleNotes       = "titleNotes"
+	Class_TitleNote        = "titleNote"
 )
-
-func (x *Class) CopyDKFields(y *Class) {
-	x.Capacity = y.Capacity
-	x.Description = y.Description
-	x.Length = y.Length
-	x.New = y.New
-	x.Programs = y.Programs
-	x.Title = y.Title
-	x.TitleNotes = y.TitleNotes
-}
-
-func (x *Class) EqualDKFields(y *Class) bool {
-	return x.Capacity == y.Capacity &&
-		x.Description == y.Description &&
-		x.Length == y.Length &&
-		x.New == y.New &&
-		x.Programs == y.Programs &&
-		x.Title == y.Title &&
-		x.TitleNotes == y.TitleNotes
-}
 
 func (x *Class) CopySheetFields(y *Class) {
 	x.AccessToken = y.AccessToken
@@ -56,7 +37,7 @@ func (x *Class) CopySheetFields(y *Class) {
 	x.Responsibility = y.Responsibility
 	x.SpreadsheetRow = y.SpreadsheetRow
 	x.Title = y.Title
-	x.TitleNotes = y.TitleNotes
+	x.TitleNote = y.TitleNote
 }
 
 func (x *Class) EqualSheetFields(y *Class) bool {
@@ -74,5 +55,5 @@ func (x *Class) EqualSheetFields(y *Class) bool {
 		x.Responsibility == y.Responsibility &&
 		x.SpreadsheetRow == y.SpreadsheetRow &&
 		x.Title == y.Title &&
-		x.TitleNotes == y.TitleNotes
+		x.TitleNote == y.TitleNote
 }

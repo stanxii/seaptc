@@ -6,7 +6,6 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -17,22 +16,11 @@ import (
 	"github.com/garyburd/web/templates"
 
 	"github.com/seaptc/server/model"
+	"github.com/seaptc/server/sheet"
 )
 
-type suggestedSchedule struct {
-	Name    string
-	Classes []*catalogClass
-}
-
-type catalogClass struct {
-	Number int
-	Length int
-	Title  string
-
-	// Meaning of flags depends on context.
-	Flag bool
-}
-
+// catalogService displays the class catalog. To keep the database read count
+// down, the pages are built and cached in the database.
 type catalogService struct {
 	*application
 
@@ -44,28 +32,15 @@ type catalogService struct {
 		New     *templates.Template `html:"catalog/new.html catalog/root.html"`
 	}
 
-	mu    sync.RWMutex
-	pages map[string]*model.Page
+	mu               sync.RWMutex
+	pages            map[string]*model.Page
+	lastValidateTime time.Time
 }
 
 func (svc *catalogService) init(ctx context.Context, a *application, tm *templates.Manager) error {
 	svc.application = a
 	svc.pages = make(map[string]*model.Page)
-
 	tm.NewFromFields(&svc.templates)
-	go func() {
-		ticker := time.NewTicker(10 * time.Minute)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			n, err := svc.validatePageCache(context.Background())
-			if err != nil {
-				log.Printf("catalog cache validation error: %v", err)
-			} else {
-				log.Printf("catalog cache eviction: %d", n)
-			}
-		}
-	}()
 	return nil
 }
 
@@ -81,29 +56,6 @@ func (svc *catalogService) makeHandler(v interface{}) func(*requestContext) erro
 	return func(rc *requestContext) error { return f(svc, rc) }
 }
 
-var catalogBuilders = map[string]func(*catalogService, *bytes.Buffer, *model.Conference, []*model.Class) error{
-	"/catalog/all": (*catalogService).buildAllPage,
-	"/catalog/new": (*catalogService).buildNewPage,
-	"/catalog/cub": func(svc *catalogService, buf *bytes.Buffer, conf *model.Conference, classes []*model.Class) error {
-		return svc.buildProgramPage(buf, conf, classes, model.CubScoutProgram)
-	},
-	"/catalog/bsa": func(svc *catalogService, buf *bytes.Buffer, conf *model.Conference, classes []*model.Class) error {
-		return svc.buildProgramPage(buf, conf, classes, model.ScoutsBSAProgram)
-	},
-	"/catalog/ven": func(svc *catalogService, buf *bytes.Buffer, conf *model.Conference, classes []*model.Class) error {
-		return svc.buildProgramPage(buf, conf, classes, model.VenturingProgram)
-	},
-	"/catalog/sea": func(svc *catalogService, buf *bytes.Buffer, conf *model.Conference, classes []*model.Class) error {
-		return svc.buildProgramPage(buf, conf, classes, model.SeaScoutProgram)
-	},
-	"/catalog/com": func(svc *catalogService, buf *bytes.Buffer, conf *model.Conference, classes []*model.Class) error {
-		return svc.buildProgramPage(buf, conf, classes, model.CommissionerProgram)
-	},
-	"/catalog/you": func(svc *catalogService, buf *bytes.Buffer, conf *model.Conference, classes []*model.Class) error {
-		return svc.buildProgramPage(buf, conf, classes, model.YouthProgram)
-	},
-}
-
 func (svc *catalogService) Serve_(rc *requestContext) error {
 	if rc.request.URL.Path != "/" {
 		return httperror.ErrNotFound
@@ -111,51 +63,41 @@ func (svc *catalogService) Serve_(rc *requestContext) error {
 	return rc.respond(svc.templates.Index, http.StatusOK, nil)
 }
 
-func (svc *catalogService) validatePageCache(ctx context.Context) (int, error) {
-	hashes, err := svc.store.GetPageHashes(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	var n int
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
-	for path, page := range svc.pages {
-		if page.Hash != hashes[path] {
-			delete(svc.pages, path)
-			n++
-		}
-	}
-	return n, nil
-}
-
 func (svc *catalogService) Serve_catalog_(rc *requestContext) error {
-	path := rc.request.URL.Path
-	if _, ok := catalogBuilders[path]; !ok {
-		return httperror.ErrNotFound
-	}
+	// We don't have enough traffic to bother with single flighting the
+	// datastore access.
 
-	if rc.isAdmin {
-		n, err := svc.validatePageCache(rc.context())
+	path := rc.request.URL.Path
+
+	svc.mu.RLock()
+	validateCache := rc.isAdmin || time.Since(svc.lastValidateTime) > 10*time.Minute
+	page, found := svc.pages[path]
+	svc.mu.RUnlock()
+
+	if validateCache {
+		// Purge stale pages from the in-memory cache. Ensure that all pages
+		// have a cache entry (possibly a nil tombstone) for quick detection of
+		// not found errors.
+		hashes, err := svc.store.GetPageHashes(rc.context())
 		if err != nil {
 			return err
 		}
-		if n > 0 {
-			rc.logf("evicted %d pages from page cache", n)
+		svc.mu.Lock()
+		svc.lastValidateTime = time.Now()
+		for path, hash := range hashes {
+			if page := svc.pages[path]; page == nil || page.Hash != hash {
+				svc.pages[path] = nil // nil is tombstone for handling not found errors
+			}
 		}
+		page, found = svc.pages[path]
+		svc.mu.Unlock()
 	}
 
-	svc.mu.RLock()
-	page := svc.pages[path]
-	svc.mu.RUnlock()
+	if !found {
+		return httperror.ErrNotFound
+	}
 
 	if page == nil {
-		// Load from the datastore.
-		//
-		// The request rate for these pages is low enough that it's not worth
-		// using x/sync/singleflight or similar to ensure that only one
-		// goroutine loads the page from the dataostore.
-
 		rc.logf("Fetching %s from datastore", path)
 		var err error
 		page, err = svc.store.GetPage(rc.context(), path)
@@ -171,7 +113,7 @@ func (svc *catalogService) Serve_catalog_(rc *requestContext) error {
 	etag := fmt.Sprintf(`"%s"`, page.Hash)
 
 	h := rc.response.Header()
-	if !svc.devMode {
+	if !svc.devMode && !rc.isAdmin {
 		h.Set("Cache-Control", "public, max-age=300")
 	}
 	h.Set("Etag", etag)
@@ -199,6 +141,11 @@ func (svc *catalogService) Serve_dashboard_rebuild__catalog(rc *requestContext) 
 		return httperror.ErrForbidden
 	}
 
+	suggestedSchedules, err := sheet.GetSuggestedSchedules(rc.context(), svc.config)
+	if err != nil {
+		return err
+	}
+
 	hashes, err := svc.store.GetPageHashes(rc.context())
 	if err != nil {
 		return err
@@ -213,28 +160,76 @@ func (svc *catalogService) Serve_dashboard_rebuild__catalog(rc *requestContext) 
 	if err != nil {
 		return err
 	}
+
 	model.SortClasses(classes, model.Class_Number)
+	catalogSuggestedSchedules := createCatalogSuggestedSchedules(classes, suggestedSchedules)
+
+	var data = struct {
+		Morning            [][]*catalogClass
+		Afternoon          [][]*catalogClass
+		Conference         *model.Conference
+		Classes            []*model.Class
+		Key                []*model.ProgramDescription
+		SuggestedSchedules []*catalogSuggestedSchedule
+		Program            *model.ProgramDescription
+		Title              string
+	}{
+		Morning:    createCatalogGrid(classes, true),
+		Afternoon:  createCatalogGrid(classes, false),
+		Key:        model.ProgramDescriptions,
+		Conference: conf,
+		Classes:    classes,
+	}
+
+	pageInfos := []struct {
+		path     string
+		template *templates.Template
+		program  int
+	}{
+		{"/catalog/", svc.templates.All, -1},
+		{"/catalog/new", svc.templates.New, -1},
+		{"/catalog/cub", svc.templates.Program, model.CubScoutProgram},
+		{"/catalog/bsa", svc.templates.Program, model.ScoutsBSAProgram},
+		{"/catalog/ven", svc.templates.Program, model.VenturingProgram},
+		{"/catalog/sea", svc.templates.Program, model.SeaScoutProgram},
+		{"/catalog/sea", svc.templates.Program, model.SeaScoutProgram},
+		{"/catalog/com", svc.templates.Program, model.CommissionerProgram},
+		{"/catalog/you", svc.templates.Program, model.YouthProgram},
+	}
 
 	var buf, cbuf bytes.Buffer
-
 	var n int
-	for path, builder := range catalogBuilders {
-		buf.Reset()
-		cbuf.Reset()
 
-		err := builder(svc, &buf, conf, classes)
+	for _, pageInfo := range pageInfos {
+		if pageInfo.program >= 0 {
+			data.Program = model.ProgramDescriptions[pageInfo.program]
+			data.Title = strings.Title(data.Program.Name)
+			data.SuggestedSchedules = catalogSuggestedSchedules[pageInfo.program]
+			data.Classes = nil
+			mask := 1 << uint(pageInfo.program)
+			for _, c := range classes {
+				if c.Programs&mask != 0 {
+					data.Classes = append(data.Classes, c)
+				}
+			}
+		}
+
+		buf.Reset()
+		err := pageInfo.template.Execute(&buf, &data)
 		if err != nil {
-			return fmt.Errorf("page %s: %v", path, err)
+			return fmt.Errorf("page %s: %v", pageInfo.path, err)
+			return err
 		}
 
 		hash := md5.Sum(buf.Bytes())
 
+		cbuf.Reset()
 		w := gzip.NewWriter(&cbuf)
 		w.Write(buf.Bytes())
 		w.Close()
 
 		page := model.Page{
-			Path:        path,
+			Path:        pageInfo.path,
 			ContentType: "text/html",
 			Hash:        fmt.Sprintf("%x", hash[:]),
 			Compressed:  true,
@@ -251,75 +246,45 @@ func (svc *catalogService) Serve_dashboard_rebuild__catalog(rc *requestContext) 
 		}
 	}
 
-	rc.logf("class catalog rebuilt, %d of %d pages changed", n, len(catalogBuilders))
-	rc.setFlashMessage("info", "Class catalog rebuilt, %d of %d pages changed.", n, len(catalogBuilders))
-
-	ref := rc.request.FormValue("ref")
-	if ref == "" {
-		ref = "/dashboard/classes"
-	}
-	return rc.redirect(ref, http.StatusSeeOther)
+	rc.logf("class catalog rebuilt, %d of %d pages changed", n, len(pageInfos))
+	return rc.redirect("/dashboard/admin", "info", "Class catalog rebuilt, %d of %d pages changed.", n, len(pageInfos))
 }
 
-func (svc *catalogService) buildAllPage(buf *bytes.Buffer, conf *model.Conference, classes []*model.Class) error {
-	var data = struct {
-		Morning    [][]*catalogClass
-		Afternoon  [][]*catalogClass
-		Conference *model.Conference
-		Classes    []*model.Class
-		Key        []*model.ProgramDescription
-	}{
-		Morning:    catalogGrid(classes, true),
-		Afternoon:  catalogGrid(classes, false),
-		Conference: conf,
-		Classes:    classes,
-		Key:        model.ProgramDescriptions,
-	}
-
-	return svc.templates.All.Execute(buf, &data)
+type catalogClass struct {
+	Number int
+	Length int
+	Title  string
+	Flag   bool
 }
 
-func (svc *catalogService) buildNewPage(buf *bytes.Buffer, conf *model.Conference, classes []*model.Class) error {
-	var data = struct {
-		Conference *model.Conference
-		Classes    []*model.Class
-		Key        []*model.ProgramDescription
-	}{
-		Conference: conf,
-		Classes:    classes,
-		Key:        model.ProgramDescriptions,
-	}
-	return svc.templates.New.Execute(buf, &data)
+type catalogSuggestedSchedule struct {
+	Name    string
+	Classes []*catalogClass
 }
 
-func (svc *catalogService) buildProgramPage(buf *bytes.Buffer, conf *model.Conference, classes []*model.Class, program int) error {
-
-	mask := 1 << uint(program)
-	var programClasses []*model.Class
+func createCatalogSuggestedSchedules(classes []*model.Class, suggestedSchedules []*model.SuggestedSchedule) map[int][]*catalogSuggestedSchedule {
+	m := make(map[int]*model.Class)
 	for _, c := range classes {
-		if c.Programs&mask != 0 {
-			programClasses = append(programClasses, c)
+		m[c.Number] = c
+	}
+
+	result := make(map[int][]*catalogSuggestedSchedule)
+	for _, ss := range suggestedSchedules {
+		css := catalogSuggestedSchedule{Name: ss.Name}
+		for _, sc := range ss.Classes {
+			cc := catalogClass{Number: sc.Number, Length: 1, Flag: sc.Elective, Title: "MISSING"}
+			if c := m[sc.Number]; c != nil {
+				cc.Length = c.Length
+				cc.Title = c.Title
+			}
+			css.Classes = append(css.Classes, &cc)
 		}
+		result[ss.Program] = append(result[ss.Program], &css)
 	}
-
-	pd := model.ProgramDescriptions[program]
-
-	var data = struct {
-		Title              string
-		Program            *model.ProgramDescription
-		Conference         *model.Conference
-		Classes            []*model.Class
-		SuggestedSchedules []*suggestedSchedule
-	}{
-		Title:      strings.Title(pd.Name),
-		Program:    pd,
-		Conference: conf,
-		Classes:    programClasses,
-	}
-	return svc.templates.Program.Execute(buf, &data)
+	return result
 }
 
-func catalogGrid(classes []*model.Class, morning bool) [][]*catalogClass {
+func createCatalogGrid(classes []*model.Class, morning bool) [][]*catalogClass {
 	// Separate classes into rows.
 
 	rows := make([][]*catalogClass, 100)

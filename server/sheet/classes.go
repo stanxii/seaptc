@@ -1,7 +1,6 @@
 package sheet
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,8 +10,6 @@ import (
 	"strings"
 
 	"github.com/seaptc/server/model"
-	"golang.org/x/oauth2/google"
-	"golang.org/x/xerrors"
 )
 
 const oaClassNumber = "700"
@@ -30,7 +27,7 @@ var setters = []struct {
 	{"responsibility", func(c *class, s string) error { return setString(&c.Responsibility, s) }},
 	{"new", func(c *class, s string) error { return setString(&c.New, s) }},
 	{"title", func(c *class, s string) error { return setString(&c.Title, s) }},
-	{"titleNotes", func(c *class, s string) error { return setString(&c.TitleNotes, s) }},
+	{"titleNote", func(c *class, s string) error { return setString(&c.TitleNote, s) }},
 	{"description", func(c *class, s string) error { return setString(&c.Description, s) }},
 	{"location", func(c *class, s string) error { return setString(&c.Location, s) }},
 	{"instructorNames", setInstructors},
@@ -122,7 +119,7 @@ func setCapacity(c *class, s string) error {
 	return nil
 }
 
-func parseSheet(r io.Reader) ([]*model.Class, error) {
+func parseClasses(r io.Reader) ([]*model.Class, error) {
 	var sheet struct {
 		Rows [][]string `json:"values"`
 	}
@@ -172,21 +169,4 @@ func parseSheet(r io.Reader) ([]*model.Class, error) {
 		result = append(result, &c.Class)
 	}
 	return result, nil
-}
-
-func Fetch(ctx context.Context, config *model.AppConfig) ([]*model.Class, error) {
-	jwtConfig, err := google.JWTConfigFromJSON([]byte(config.PlanningSheetServiceAccountKey), "https://www.googleapis.com/auth/spreadsheets.readonly")
-	if err != nil {
-		return nil, xerrors.Errorf("error parsing planning sheet service account key: %w", err)
-	}
-	client := jwtConfig.Client(ctx)
-	resp, err := client.Get(config.PlanningSheetURL)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("fetch sheet returned %d", resp.StatusCode)
-	}
-	defer resp.Body.Close()
-	return parseSheet(resp.Body)
 }

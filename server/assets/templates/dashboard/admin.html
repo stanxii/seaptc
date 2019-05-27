@@ -1,0 +1,14 @@
+{{define "title"}}PTC: Danger Zone{{end}}
+{{define "body"}}
+
+{{template "refreshClassesButton" $}}
+
+<form class="form-inline mb-3" action="/dashboard/rebuild-catalog" class="form-inline" method="post">
+  {{$.XSRFToken "/dashboard/rebuild-catalog"}}
+  <input type="hidden" name="_ref" value="{{$.Request.URL.RequestURI}}">
+  <button type="submit" class="btn btn-outline-secondary">Rebuild class catalog</button>
+</form>
+
+<p>Edit: <a href="/dashboard/conference">Conference</a>
+
+{{end}}

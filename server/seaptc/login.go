@@ -59,7 +59,8 @@ func (svc *loginService) Serve_login(rc *requestContext) error {
 		return err
 	}
 	c := svc.oauth2ConfigForRequest(rc)
-	return rc.redirect(c.AuthCodeURL(state), http.StatusSeeOther)
+	http.Redirect(rc.response, rc.request, c.AuthCodeURL(state), http.StatusSeeOther)
+	return nil
 }
 
 func (svc *loginService) Serve_login_callback(rc *requestContext) error {
@@ -102,10 +103,12 @@ func (svc *loginService) Serve_login_callback(rc *requestContext) error {
 	if ref == "" {
 		ref = "/"
 	}
-	return rc.redirect(ref, http.StatusSeeOther)
+	http.Redirect(rc.response, rc.request, ref, http.StatusSeeOther)
+	return nil
 }
 
 func (svc *loginService) Serve_logout(rc *requestContext) error {
 	svc.staffIDCodec.Encode(rc.response)
-	return rc.redirect("/dashboard", http.StatusSeeOther)
+	http.Redirect(rc.response, rc.request, "/dashboard", http.StatusSeeOther)
+	return nil
 }

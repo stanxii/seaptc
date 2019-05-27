@@ -192,8 +192,12 @@ type requestContext struct {
 	participantID string
 }
 
-func (rc *requestContext) redirect(path string, statusCode int) error {
-	http.Redirect(rc.response, rc.request, path, statusCode)
+func (rc *requestContext) redirect(path string, flashKind string, flashFormat string, flashArgs ...interface{}) error {
+	rc.setFlashMessage(flashKind, flashFormat, flashArgs...)
+	if p := rc.request.FormValue("_ref"); p != "" {
+		path = p
+	}
+	http.Redirect(rc.response, rc.request, path, http.StatusSeeOther)
 	return nil
 }
 

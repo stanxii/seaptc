@@ -16,6 +16,13 @@ type AppConfig struct {
 	} `json:"loginClient" datastore:"loginClient,noindex"`
 
 	// Planning spreadsheet
-	PlanningSheetURL               string `json:"planningSheetURL" datastore:"planningSheetURL,noindex"`
+	ClassesSheetURL                string `json:"classesSheetURL" datastore:"classesSheetURL,noindex,omitempty"`
+	SuggestedSchedulesSheetURL     string `json:"suggestedScheduleSheetURL" datastore:"suggestedScheduleSheetURL,noindex,omitempty"`
 	PlanningSheetServiceAccountKey string `json:"planningSheetServiceAccountKey" datastore:"planningSheetServiceAccountKey,noindex"`
+
+	Junk1 string `json:"-" datastore:"year,noindex,omitempty"`
+	Junk2 string `json:"-" datastore:"planningSheetKey,noindex,omitempty"`
+	Junk3 string `json:"-" datastore:"classesURL,noindex,omitempty"`
+	Junk4 string `json:"-" datastore:"suggestedScheduleURL,noindex,omitempty"`
+	Junk5 string `json:"-" datastore:"planningSheetURL,noindex,omitempty"`
 }

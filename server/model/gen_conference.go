@@ -6,6 +6,7 @@ const (
 	Conference_Day                = "day"
 	Conference_Lunches            = "lunches"
 	Conference_Month              = "month"
-	Conference_SuggestedSchedules = "suggestedSchedules"
+	Conference_RegistrationURL    = "registrationURL"
+	Conference_SuggestedSchedules = "SuggestedSchedules"
 	Conference_Year               = "year"
 )

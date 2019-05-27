@@ -1,0 +1,33 @@
+{{define "title"}}PTC: Conference{{end}}
+{{define "body"}}{{with $.Data}}
+<h3>Conference</h3>
+
+{{if .Invalid}}<div class="alert alert-danger" role="alert"><strong>Eek!</strong> Fix the errors noted below and try again. </div>{{end}}
+
+<form method="POST" class="mb-3">
+  {{$.XSRFToken "/dashboard/conference"}}
+
+  <div class="form-group">
+    <label>Year / Month / Day</label>
+    <div class="form-row">
+      <div class="col">
+        <input type="text" class="form-control {{.Invalid.year}}" placeholder="Year" name="year" value="{{.Form.Get "year"}}">
+      </div>
+      <div class="col">
+        <input type="text" class="form-control {{.Invalid.month}}" placeholder="Month" name="month" value="{{.Form.Get "month"}}">
+      </div>
+      <div class="col">
+        <input type="text" class="form-control {{.Invalid.day}}" placeholder="Day" name="day" value="{{.Form.Get "day"}}">
+      </div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Registration URL</label>
+    <input type="text" class="form-control" name="registrationURL" value="{{.Conference.RegistrationURL}}">
+  </div>
+
+  <button type="submit" name="submit" value="submit" class="btn btn-primary">Submit</button>
+  <a class="btn btn-secondary" href="/">Cancel</a>
+</form>
+{{end}}{{end}}
