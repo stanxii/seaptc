@@ -80,7 +80,7 @@ var ProgramDescriptions = []*ProgramDescription{
 	// Must match order in xxxPorgram constants above.
 	{"cub", "Cub Pack adults"},
 	{"bsa", "Scout Troop adults"},
-	{"ven", "Venture Crew adults"},
+	{"ven", "Venturing Crew adults"},
 	{"sea", "Sea Scout adults"},
 	{"com", "Commissioners"},
 	{"you", "youth"},
