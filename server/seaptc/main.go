@@ -34,7 +34,8 @@ func main() {
 	h, err := newApplication(context.Background(), st, !isAppEngine, *dir,
 		&catalogService{},
 		&dashboardService{},
-		&loginService{})
+		&loginService{},
+		&sessionEventsService{})
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -2,6 +2,7 @@ package model
 
 import (
 	"log"
+	"strings"
 	"time"
 )
 
@@ -71,6 +72,10 @@ type ProgramDescription struct {
 	Name string
 }
 
+func (pd *ProgramDescription) TitleName() string {
+	return strings.Title(pd.Name)
+}
+
 var ProgramDescriptions = []*ProgramDescription{
 	// Must match order in xxxPorgram constants above.
 	{"cub", "Cub Pack adults"},
@@ -78,10 +83,10 @@ var ProgramDescriptions = []*ProgramDescription{
 	{"ven", "Venture Crew adults"},
 	{"sea", "Sea Scout adults"},
 	{"com", "Commissioners"},
-	{"you", "Youth"},
+	{"you", "youth"},
 
 	// AllProgram must be last in slice for programDescriptionsForMask()
-	{"all", "Everyone"},
+	{"all", "everyone"},
 }
 
 func programDescriptionsForMask(mask int, reverse bool) []*ProgramDescription {
