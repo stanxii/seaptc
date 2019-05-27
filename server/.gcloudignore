@@ -23,6 +23,8 @@
 *.test
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+# doc files
+*.md
 
 # Paths are relative to go.mod file in the parent directory.
 /seaptc/seaptc
