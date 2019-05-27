@@ -14,7 +14,7 @@
       {{range .Classes}}
         <li><a href="#c{{.Number}}">{{.Number}}</a> – {{.Title}}
           {{if ge .Length 6}}<em>(all&nbsp;day)</em>
-          {{- else if ge .Length 1}}<em>({{.Length}} hours)</em> 
+          {{- else if gt .Length 1}}<em>({{.Length}} hours)</em>
           {{- end}}
           {{if .Flag}}<sup>†</sup>{{end}}
         {{end}}
