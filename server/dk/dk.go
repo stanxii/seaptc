@@ -125,7 +125,7 @@ func ParseCSV(rd io.Reader) ([]*model.Participant, error) {
 	}
 	eventColumnIndex, ok := columnIndex["Event Name"]
 	if !ok {
-		return errors.New("could not find Event Name column in export file")
+		return nil, errors.New("could not find Event Name column in export file")
 	}
 
 	// Process body rows.

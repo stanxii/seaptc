@@ -16,7 +16,6 @@ import (
 	"github.com/garyburd/web/templates"
 
 	"github.com/seaptc/server/model"
-	"github.com/seaptc/server/sheet"
 )
 
 // catalogService displays the class catalog. To keep the database read count
@@ -65,7 +64,18 @@ func (svc *catalogService) Serve_(rc *requestContext) error {
 
 func (svc *catalogService) Serve_catalog_(rc *requestContext) error {
 	// We don't have enough traffic to bother with single flighting the
-	// datastore access.
+	// datastore access in this function.
+
+	if svc.devMode {
+		rc.request.ParseForm()
+		if _, ok := rc.request.Form["build"]; ok {
+			changed, total, err := svc.buildCatalog(rc.context())
+			if err != nil {
+				return err
+			}
+			rc.logf("class catalog rebuilt, %d of %d pages changed", changed, total)
+		}
+	}
 
 	path := rc.request.URL.Path
 
@@ -122,7 +132,6 @@ func (svc *catalogService) Serve_catalog_(rc *requestContext) error {
 		return nil
 	}
 	h.Set("Content-Type", page.ContentType)
-	h.Set("Content-Type", page.ContentType)
 	h.Set("Content-Length", strconv.Itoa(len(page.Data)))
 	if page.Compressed {
 		h.Set("Content-Encoding", "gzip")
@@ -140,25 +149,33 @@ func (svc *catalogService) Serve_dashboard_rebuild__catalog(rc *requestContext) 
 	if !rc.isAdmin {
 		return httperror.ErrForbidden
 	}
-
-	suggestedSchedules, err := sheet.GetSuggestedSchedules(rc.context(), svc.config)
+	changed, total, err := svc.buildCatalog(rc.context())
 	if err != nil {
 		return err
 	}
 
-	hashes, err := svc.store.GetPageHashes(rc.context())
+	return rc.redirect("/dashboard/admin", "info", "Class catalog rebuilt, %d of %d pages changed.", changed, total)
+}
+
+func (svc *catalogService) buildCatalog(ctx context.Context) (int, int, error) {
+	suggestedSchedules, err := svc.store.GetSuggestedSchedules(ctx)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 
-	conf, err := svc.store.GetConference(rc.context())
+	hashes, err := svc.store.GetPageHashes(ctx)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 
-	classes, err := svc.store.GetAllClassesFull(rc.context())
+	conf, err := svc.store.GetConference(ctx)
 	if err != nil {
-		return err
+		return 0, 0, err
+	}
+
+	classes, err := svc.store.GetAllClassesFull(ctx)
+	if err != nil {
+		return 0, 0, err
 	}
 
 	model.SortClasses(classes, model.Class_Number)
@@ -217,8 +234,7 @@ func (svc *catalogService) Serve_dashboard_rebuild__catalog(rc *requestContext) 
 		buf.Reset()
 		err := pageInfo.template.Execute(&buf, &data)
 		if err != nil {
-			return fmt.Errorf("page %s: %v", pageInfo.path, err)
-			return err
+			return 0, 0, fmt.Errorf("page %s: %v", pageInfo.path, err)
 		}
 
 		hash := md5.Sum(buf.Bytes())
@@ -236,18 +252,16 @@ func (svc *catalogService) Serve_dashboard_rebuild__catalog(rc *requestContext) 
 			Data:        cbuf.Bytes(),
 		}
 
-		err = svc.store.SetPage(rc.context(), &page)
+		err = svc.store.SetPage(ctx, &page)
 		if err != nil {
-			return err
+			return 0, 0, err
 		}
 
 		if page.Hash != hashes[page.Path] {
 			n++
 		}
 	}
-
-	rc.logf("class catalog rebuilt, %d of %d pages changed", n, len(pageInfos))
-	return rc.redirect("/dashboard/admin", "info", "Class catalog rebuilt, %d of %d pages changed.", n, len(pageInfos))
+	return n, len(pageInfos), nil
 }
 
 type catalogClass struct {

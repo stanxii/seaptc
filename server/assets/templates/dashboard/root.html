@@ -40,6 +40,6 @@
     <form class="form-inline mb-3" action="/dashboard/refresh-classes" class="form-inline" method="post">
       {{$.XSRFToken "/dashboard/refresh-classes"}}
       <input type="hidden" name="_ref" value="{{$.Request.URL.RequestURI}}">
-      <button type="submit" class="btn btn-outline-secondary">Reload classes from spreadsheet</button>
+      <button type="submit" class="btn btn-outline-secondary">Load classes from spreadsheet</button>
     </form>
 {{end}}{{end}}

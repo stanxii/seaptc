@@ -4,6 +4,7 @@
 <h3>{{.Class.Number}}: {{.Class.Title}}</h3>
 <p>
 <table class="mb-3 infoblock">
+  <tr><th>Catalog</th><td><a href="/catalog/#c{{.Cass.Number}}">/catalog/#c{{.ClassNumber}}</td></tr>
   {{if .InstructorView}}
     <tr><th>Instructors</th><td>{{range $i, $u := .Class.InstructorNames}}{{if $i}}, {{end}}{{.}}{{end}}</td></tr>
   {{end}}

@@ -125,7 +125,18 @@ func (svc *dashboardService) Serve_dashboard_refresh__classes(rc *requestContext
 	if err != nil {
 		return err
 	}
+
+	suggestedSchedules, err := sheet.GetSuggestedSchedules(rc.context(), svc.config)
+	if err != nil {
+		return err
+	}
+
 	n, err := svc.store.UpdateClassesFromSheet(rc.context(), classes, rc.request.FormValue("all") != "")
+	if err != nil {
+		return err
+	}
+
+	err = svc.store.SetSuggestedSchedules(rc.context(), suggestedSchedules)
 	if err != nil {
 		return err
 	}
@@ -190,7 +201,10 @@ func (svc *dashboardService) Serve_dashboard_admin(rc *requestContext) error {
 		return httperror.ErrForbidden
 	}
 	data := struct {
-	}{}
+		DevMode bool
+	}{
+		DevMode: svc.devMode,
+	}
 	return rc.respond(svc.templates.Admin, http.StatusOK, &data)
 }
 

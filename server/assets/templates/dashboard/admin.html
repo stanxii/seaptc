@@ -3,12 +3,19 @@
 
 {{template "refreshClassesButton" $}}
 
-<form class="form-inline mb-3" action="/dashboard/rebuild-catalog" class="form-inline" method="post">
-  {{$.XSRFToken "/dashboard/rebuild-catalog"}}
+<form class="form mb-3" action="/dashboard/rebuild-catalog" class="form-inline" method="post">
+   {{$.XSRFToken "/dashboard/rebuild-catalog"}}
   <input type="hidden" name="_ref" value="{{$.Request.URL.RequestURI}}">
+  <div>
   <button type="submit" class="btn btn-outline-secondary">Rebuild class catalog</button>
+  </div>
+  {{if $.Data.DevMode}}
+    <small class="text-muted">
+      Add ?build to catalog page URLs to force build on view. 
+      Example: <a href="/catalog/?build">/catalog/?build</a>.
+    </small>
+  {{end}}
 </form>
-
 <p>Edit: <a href="/dashboard/conference">Conference</a>
 
 {{end}}

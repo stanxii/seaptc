@@ -37,8 +37,6 @@ type Conference struct {
 
 	RegistrationURL string `json:"registrationURL" datastore:"registrationURL,noindex"`
 
-	SuggestedSchedules string `datastore:"SuggestedSchedules,omitempty"`
-
 	lunch struct {
 		once       sync.Once
 		def        *Lunch
