@@ -37,6 +37,10 @@ type Conference struct {
 
 	RegistrationURL string `json:"registrationURL" datastore:"registrationURL,noindex"`
 
+	// Use this message to announce when registration will open or that the
+	// current catalog is for the previous event.
+	CatalogStatusMessage string `json:"catalogStatusMessage" datastore:"catalogStatusMessage,noindex"`
+
 	lunch struct {
 		once       sync.Once
 		def        *Lunch

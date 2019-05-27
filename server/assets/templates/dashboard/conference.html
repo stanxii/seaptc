@@ -27,6 +27,12 @@
     <input type="text" class="form-control" name="registrationURL" value="{{.Conference.RegistrationURL}}">
   </div>
 
+  <div class="form-group">
+    <label>Catalog status message</label>
+    <input type="text" class="form-control" name="catalogStatusMessage" value="{{.Conference.CatalogStatusMessage}}">
+  </div>
+
+ 
   <button type="submit" name="submit" value="submit" class="btn btn-primary">Submit</button>
   <a class="btn btn-secondary" href="/dashboard/admin">Cancel</a>
 </form>

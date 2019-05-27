@@ -184,6 +184,7 @@ func (svc *dashboardService) Serve_dashboard_conference(rc *requestContext) erro
 	setInt(&conf.Month, "month")
 	setInt(&conf.Day, "day")
 	conf.RegistrationURL = data.Form.Get("registrationURL")
+	conf.CatalogStatusMessage = data.Form.Get("catalogStatusMessage")
 	if len(data.Invalid) > 0 {
 		return rc.respond(svc.templates.Conference, http.StatusOK, &data)
 	}
