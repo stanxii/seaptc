@@ -265,10 +265,11 @@ func (svc *catalogService) buildCatalog(ctx context.Context) (int, int, error) {
 }
 
 type catalogClass struct {
-	Number int
-	Length int
-	Title  string
-	Flag   bool
+	Number    int
+	Length    int
+	Title     string
+	TitleNote string
+	Flag      bool
 }
 
 type catalogSuggestedSchedule struct {
@@ -290,6 +291,7 @@ func createCatalogSuggestedSchedules(classes []*model.Class, suggestedSchedules 
 			if c := m[sc.Number]; c != nil {
 				cc.Length = c.Length
 				cc.Title = c.Title
+				cc.TitleNote = c.TitleNote
 			}
 			css.Classes = append(css.Classes, &cc)
 		}
@@ -309,9 +311,10 @@ func createCatalogGrid(classes []*model.Class, morning bool) [][]*catalogClass {
 		}
 
 		cc := &catalogClass{
-			Number: c.Number,
-			Length: c.Length,
-			Title:  c.Title,
+			Number:    c.Number,
+			Length:    c.Length,
+			Title:     c.Title,
+			TitleNote: c.TitleNote,
 		}
 
 		i := c.Number % 100

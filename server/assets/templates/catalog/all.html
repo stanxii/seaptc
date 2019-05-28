@@ -33,14 +33,14 @@ session. Some classes run for more than one session.
 <tbody>
 {{range .Morning}}
   <tr>
-    {{range .}}
-      {{if .}}<td width="33%" colspan="{{.Length}}" >
-       {{if .Number}}
-          <a href="#c{{.Number}}">{{.Number}}</a> {{.Title}}
-          {{if .Flag}} <span style="float:right" title="class continues after lunch">&rarr;</span>{{end}}
-       {{end}}</td>
-      {{end}}
-    {{end}}
+    {{- range .}}
+      {{- if .}}<td width="33%" colspan="{{.Length}}" >
+       {{- if .Number}}
+          <a href="#c{{.Number}}">{{.Number}}</a> {{.Title}}{{with .TitleNote}} ({{.}}){{end}}
+          {{- if .Flag}} <span style="float:right" title="class continues after lunch">&rarr;</span>{{end}}
+       {{- end}}</td>
+      {{- end}}
+    {{- end}}
   </tr>
 {{end}}
 </tbody>
@@ -59,14 +59,14 @@ session. Some classes run for more than one session.
 <tbody>
 {{range .Afternoon}}
   <tr>
-    {{range .}}
-      {{if .}}<td width="33%" colspan="{{.Length}}" >
-       {{if .Number}}
-          {{if .Flag}} <span title="continuation of morning class">&rarr;</span>{{end}}
-          <a href="#c{{.Number}}">{{.Number}}</a> {{.Title}}
-       {{end}}</td>
-      {{end}}
-    {{end}}
+    {{- range .}}
+      {{- if .}}<td width="33%" colspan="{{.Length}}" >
+       {{- if .Number}}
+          {{- if .Flag}} <span title="continuation of morning class">&rarr;</span>{{end}}
+          <a href="#c{{.Number}}">{{.Number}}</a> {{.Title}}{{with .TitleNote}} ({{.}}){{end}}
+       {{- end}}</td>
+      {{- end}}
+    {{- end}}
   </tr>
 {{end}}
 </tbody>
