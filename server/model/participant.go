@@ -8,6 +8,9 @@ import (
 
 type Participant struct {
 	RegistrationNumber  string `json:"registrationNumber" datastore:"registrationNumber,noindex" fields:"DK"`
+	RegisteredByName    string `json:"registeredByName" datastore:"registeredByName,noindex" fields:"DK"`
+	RegisteredByEmail   string `json:"registeredByEmail" datastore:"registeredByEmail,noindex" fields:"DK"`
+	RegisteredByPhone   string `json:"registeredByPhone" datastore:"registeredByPhone,noindex" fields:"DK"`
 	FirstName           string `json:"firstName" datastore:"firstName,noindex" fields:"DK"`
 	LastName            string `json:"lastName" datastore:"lastName,noindex" fields:"DK"`
 	Nickname            string `json:"nickname" datastore:"nickname,noindex" fields:"DK"`
