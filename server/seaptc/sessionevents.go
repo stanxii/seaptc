@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,7 +19,7 @@ import (
 type sessionEventsService struct {
 	*application
 	templates struct {
-		Error *templates.Template `text:"sessionevents/error.txt"`
+		Error *templates.Template `text:"sessionevents/error.json"`
 	}
 }
 
@@ -78,30 +79,35 @@ func createSessionEvent(conf *model.Conference, class *model.Class) *sessionEven
 	}
 }
 
-func (svc *sessionEventsService) respond(rc *requestContext, data interface{}) error {
+func (svc *sessionEventsService) handleCORS(rc *requestContext) bool {
 	h := rc.response.Header()
 	h.Set("Access-Control-Allow-Origin", "*")
 	h.Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 	h.Set("Access-Control-Allow-Headers", "*")
-	h.Set("Content-Type", "application/json")
-	switch rc.request.Method {
-	case "OPTIONS":
-		rc.response.WriteHeader(http.StatusNoContent)
-	case "HEAD":
-		rc.response.WriteHeader(http.StatusOK)
-	default:
-		p, err := json.MarshalIndent(data, "", "   ")
-		if err != nil {
-			return err
-		}
-		rc.response.Write(p)
+	if rc.request.Method != "OPTIONS" {
+		return false
 	}
+	rc.response.WriteHeader(http.StatusNoContent)
+	return true
+}
+
+func (svc *sessionEventsService) respond(rc *requestContext, status int, result interface{}) error {
+	rc.response.Header().Set("Content-Type", "application/json")
+	if rc.request.Method == "HEAD" {
+		return nil
+	}
+	data := map[string]interface{}{"result": result}
+	p, err := json.MarshalIndent(data, "", "   ")
+	if err != nil {
+		return err
+	}
+	rc.response.Write(p)
 	return nil
 }
 
 func (svc *sessionEventsService) Serve_session__events(rc *requestContext) error {
-	if rc.request.Method != "GET" {
-		return svc.respond(rc, nil)
+	if svc.handleCORS(rc) {
+		return nil
 	}
 
 	classes, err := svc.store.GetAllClassesFull(rc.context())
@@ -117,22 +123,29 @@ func (svc *sessionEventsService) Serve_session__events(rc *requestContext) error
 	for _, class := range classes {
 		result = append(result, createSessionEvent(conf, class))
 	}
-	return svc.respond(rc, result)
+	return svc.respond(rc, http.StatusOK, result)
 }
 
 func (svc *sessionEventsService) Serve_session__events_(rc *requestContext) error {
-	if rc.request.Method != "GET" {
-		return svc.respond(rc, nil)
+	if svc.handleCORS(rc) {
+		return nil
 	}
 
-	number, err := strconv.Atoi(strings.TrimPrefix(rc.request.URL.Path, "/session-events/"))
-	if err != nil {
-		return httperror.ErrNotFound
+	numString := strings.TrimPrefix(rc.request.URL.Path, "/session-events/")
+
+	number, err := strconv.Atoi(numString)
+	if err != nil || number <= 0 {
+		return &httperror.Error{Status: http.StatusNotFound, Message: fmt.Sprintf("Class %q not found.", numString)}
 	}
 
 	class, err := svc.store.GetClass(rc.context(), number)
 	if err == store.ErrNotFound {
-		err = httperror.ErrNotFound
+		return &httperror.Error{
+			Status: http.StatusNotFound, Message: fmt.Sprintf("Class %q not found.", numString),
+			Err: err,
+		}
+	} else if err != nil {
+		return err
 	}
 
 	conf, err := svc.store.GetConference(rc.context())
@@ -140,5 +153,5 @@ func (svc *sessionEventsService) Serve_session__events_(rc *requestContext) erro
 		return err
 	}
 
-	return svc.respond(rc, createSessionEvent(conf, class))
+	return svc.respond(rc, http.StatusOK, createSessionEvent(conf, class))
 }

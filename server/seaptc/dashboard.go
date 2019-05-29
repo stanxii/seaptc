@@ -48,7 +48,7 @@ func (svc *dashboardService) makeHandler(v interface{}) func(*requestContext) er
 
 func (svc *dashboardService) getClass(rc *requestContext, pathPrefix string) (*model.Class, error) {
 	number, err := strconv.Atoi(strings.TrimPrefix(rc.request.URL.Path, pathPrefix))
-	if err != nil {
+	if err != nil || number <= 0 {
 		return nil, httperror.ErrNotFound
 	}
 	class, err := svc.store.GetClass(rc.context(), number)
