@@ -16,28 +16,6 @@
     font-size: 90%;
 }
 
-.sticky-offset {
-    top: 107px;
-}
-
-.navbar-scout-color {
-    background-color: #003f87;
-}
-
-.navbar-background {
-    background-color: #f0f0f0ff;
-    padding: 5px;
-}
-
 body {
     font-family: "Ubuntu";
-}
-
-.session-table-color {
-    background: #e3e3e3;
-}
-
-.mobile-sidebar {
-    right: 40px;
-    top: 60px;
 }
