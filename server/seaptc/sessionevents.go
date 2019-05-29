@@ -42,15 +42,17 @@ func (svc *sessionEventsService) makeHandler(v interface{}) func(*requestContext
 }
 
 type sessionEvent struct {
-	Number      int      `json:"number"`
-	Title       string   `json:"title"`
-	New         string   `json:"titleNew"` // rename to avoid js reserved word
-	TitleNote   string   `json:"titleNote"`
-	Description string   `json:"description"`
-	StartTime   []int    `json:"startTime"` // year, month, day, hour, minute
-	EndTime     []int    `json:"endTime"`   // year, month, day, hour, minute
-	Capacity    int      `json:"capacity"`  // 0: no limit, -1 no space
-	Programs    []string `json:"programs"`
+	Number       int      `json:"number"`
+	Title        string   `json:"title"`
+	New          string   `json:"titleNew"` // rename to avoid js reserved word
+	TitleNote    string   `json:"titleNote"`
+	Description  string   `json:"description"`
+	StartSession int      `json:"startSession"`
+	EndSession   int      `json:"endSession"`
+	StartTime    []int    `json:"startTime"` // year, month, day, hour, minute
+	EndTime      []int    `json:"endTime"`   // year, month, day, hour, minute
+	Capacity     int      `json:"capacity"`  // 0: no limit, -1 no space
+	Programs     []string `json:"programs"`
 }
 
 func createSessionEvent(conf *model.Conference, class *model.Class) *sessionEvent {
@@ -63,19 +65,23 @@ func createSessionEvent(conf *model.Conference, class *model.Class) *sessionEven
 	endMinute := (end - time.Hour*endHour) / time.Minute
 
 	var programs []string
-	for _, pd := range class.ProgramDescriptions(false) {
-		programs = append(programs, pd.Name)
+	if class.Programs != (1<<model.NumPrograms)-1 {
+		for _, pd := range class.ProgramDescriptions(false) {
+			programs = append(programs, pd.Name)
+		}
 	}
 
 	return &sessionEvent{
-		Number:      class.Number,
-		New:         class.New,
-		Title:       class.Title,
-		TitleNote:   class.TitleNote,
-		Description: class.Description,
-		StartTime:   []int{conf.Year, conf.Month, conf.Day, int(startHour), int(startMinute)},
-		EndTime:     []int{conf.Year, conf.Month, conf.Day, int(endHour), int(endMinute)},
-		Programs:    programs,
+		Number:       class.Number,
+		New:          class.New,
+		Title:        class.Title,
+		TitleNote:    class.TitleNote,
+		Description:  class.Description,
+		StartSession: class.Start() + 1,
+		EndSession:   class.End() + 1,
+		StartTime:    []int{conf.Year, conf.Month, conf.Day, int(startHour), int(startMinute)},
+		EndTime:      []int{conf.Year, conf.Month, conf.Day, int(endHour), int(endMinute)},
+		Programs:     programs,
 	}
 }
 
