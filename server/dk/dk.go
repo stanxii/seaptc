@@ -37,6 +37,8 @@ var setters = []struct {
 	{"Registration Number", func(p *participant, s string) { p.RegistrationNumber = s }},
 	{"Registered By First Name", func(p *participant, s string) { p.registeredByFirstName = s }},
 	{"Registered By Last Name", func(p *participant, s string) { p.registeredByLastName = s }},
+	{"Registered By Email", func(p *participant, s string) { p.RegisteredByEmail = s }},
+	{"Registered By Phone", func(p *participant, s string) { p.RegisteredByPhone = s }},
 	{"First Name", func(p *participant, s string) { p.FirstName = s }},
 	{"Last Name", func(p *participant, s string) { p.LastName = s }},
 	//XXX {"Nickname", func(p *participant, s string) { p.Nickname = s }},
@@ -57,18 +59,18 @@ var setters = []struct {
 	{"How many years have you been in scouting?", func(p *participant, s string) { p.ScoutingYears = s }},
 	{"Print QR code on PTC name badge?", func(p *participant, s string) { p.ShowQRCode = s == "Yes" }},
 
-	// addDietaryRestriction assumes that Vegan is parsed before Vegetarian.
-	{"Do you have any meal requirements?:Vegan", addDietaryRestriction}, // addDietaryRestriction requires Vegan before Vegetarian
+	// addDietaryRestriction assumes that Vegan is parsed first.
+	{"Do you have any meal requirements?:Vegan", addDietaryRestriction},
 	{"Do you have any meal requirements?:Vegetarian", addDietaryRestriction},
 	{"Do you have any meal requirements?:Gluten Free", addDietaryRestriction},
 
-	// Downstream code assumes that Other is last marketing option.
+	// Downstream code assumes that the other option is parsed last.
 	{"How did you hear about the PTC?:Roundtable/District", addMarketing},
 	{"How did you hear about the PTC?:eTotem", addMarketing},
 	{"How did you hear about the PTC?:Council website", addMarketing},
 	{"How did you hear about the PTC?:Attended before", addMarketing},
 	{"How did you hear about the PTC?:Wood Badge", addMarketing},
-	{"What other ways did you hear about the PTC?", addMarketing},
+	//XXX {"What other ways did you hear about the PTC?", addMarketing},
 
 	{"Which classes are you teaching?", func(r *participant, s string) { r.instructorDescription = s }},
 	{"Which organization are you representing on the midway?", func(r *participant, s string) { r.midwayDescription = s }},
@@ -78,13 +80,15 @@ func addDietaryRestriction(p *participant, s string) {
 	if s == "" {
 		return
 	}
-	if s == "Vegetarian" && strings.Contains(p.DietaryRestrictions, "Vegan") {
+	if p.DietaryRestrictions == "Vegan" && s == "Vegetarian" {
+		// Vegan is more restrictive than vegetarian
 		return
 	}
 	if p.DietaryRestrictions == "" {
 		p.DietaryRestrictions = s
+	} else {
+		p.DietaryRestrictions = p.DietaryRestrictions + "; " + s
 	}
-	p.DietaryRestrictions = p.DietaryRestrictions + "; " + s
 }
 
 func addMarketing(p *participant, s string) {
@@ -93,19 +97,20 @@ func addMarketing(p *participant, s string) {
 	}
 	if p.Marketing == "" {
 		p.Marketing = s
-		return
+	} else {
+		p.Marketing = p.Marketing + "; " + strings.Replace(s, ";", " ", -1)
 	}
-	p.Marketing = p.Marketing + "; " + strings.Replace(s, ";", " ", -1)
 }
 
 func ParseCSV(rd io.Reader) ([]*model.Participant, error) {
 
-	// Skip BOM
-
-	var bom [3]byte
-	if _, err := io.ReadFull(rd, bom[:]); err != nil {
-		return nil, err
-	}
+	/*
+		// Skip BOM
+		var bom [3]byte
+		if _, err := io.ReadFull(rd, bom[:]); err != nil {
+			return nil, err
+		}
+	*/
 
 	csvr := csv.NewReader(rd)
 
@@ -209,23 +214,11 @@ func cleanParticipant(p *participant) {
 	p.FirstName = titleCase2(p.FirstName, p.registeredByFirstName)
 	p.LastName = titleCase2(p.LastName, p.registeredByLastName)
 	p.Nickname = titleCase(p.Nickname)
+	p.RegisteredByName = p.registeredByFirstName + " " + p.registeredByLastName
 
 	if p.Nickname == p.FirstName {
 		// Remove trivial nickname
 		p.Nickname = ""
-	} else if i := len(p.Nickname) - len(p.LastName); i > 0 && p.Nickname[i:] == p.LastName && p.Nickname[i-1] == ' ' {
-		// Remove last name.
-		p.Nickname = p.Nickname[:i-1]
-
-		if i := len(p.Nickname) - len(p.FirstName); i >= 0 && p.Nickname[:len(p.FirstName)] == p.FirstName {
-			if i == 0 {
-				// Remainder is first name, no need for nickname.
-				p.Nickname = ""
-			} else if i == 2 && p.Nickname[len(p.Nickname)-2] == ' ' {
-				// Remainder is first name, middle initial. No need for nickname.
-				p.Nickname = ""
-			}
-		}
 	}
 
 	if removeSuffix[p.Suffix] {
