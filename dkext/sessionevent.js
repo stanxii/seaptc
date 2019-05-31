@@ -106,7 +106,7 @@ function showProposedModifications(values) {
   if (mods.hasChildNodes()) {
     info.appendChild(mods);
   } else {
-    info.appendChild(document.createElement("div")).textContent = "Event has expected values.";
+    info.appendChild(document.createElement("div")).textContent = "The session event is up-to-date.";
   }
 }
 

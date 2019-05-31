@@ -1,5 +1,7 @@
 // Content script for "Manage a Program Session".
 
+
+
 (() => {
   let title = document.querySelector("#pagetitlediv table tbody tr:first-of-type th");
   if (!title || (title.innerText.toUpperCase() !== "MANAGE A PROGRAM SESSION")) {
@@ -11,24 +13,32 @@
 
   let classificationID = sp.get("classificationid");
   if (!classificationID) {
+    classificationID = sp.get("emclassificationid");
+  }
+  if (!classificationID) {
     console.log("DKE: could not find classificationID");
     return;
   }
 
   let emActivityKey = sp.get("activitykey");
   if (!emActivityKey) {
+    emActivityKey = sp.get("emactivitykey");
+  }
+  if (!emActivityKey) {
     console.log("DKE: could not find activityID");
     return;
   }
 
   // Replace ASP.NET post backs with URLs!!!
+  let hrefs  = [];
   for (let e of document.querySelectorAll(".dk-three-dots")) {
     let tr = e.closest("tr")
     if (!tr) {
       continue
     }
     let activityKey = e.id;
-    let href = `/manageevents/confirmedit.asp` +
+    let href = window.location.origin +
+      `/manageevents/confirmedit.asp` +
       `?classificationid=${classificationID}&activitykey=${activityKey}` +
       `&returntopage=%2fmanageevents%2feventsmanagement.aspx` +
       `%3femclassificationid%3d${classificationID}%26emactivitykey%3d${emActivityKey}`
@@ -37,5 +47,22 @@
     for (let i = 0; i < anchors.length - 1; i++) {
       anchors[i].href = href;
     }
+    hrefs.push(href)
   }
+
+  // Tab explosion.
+  let tbody = document.querySelector("#ActionMenu_ManageProgramSessions tbody")
+  if (tbody) {
+    let tr = tbody.appendChild(document.createElement("tr"))
+    tr.appendChild(document.createElement("td")).textContent = "💥";
+    let anchor = tr.appendChild(document.createElement("td")).appendChild(document.createElement("a"));
+    anchor.textContent = "Tab Explosion";
+    anchor.href = "#";
+    anchor.style = "text-decoration: none;";
+    anchor.onclick = () => {
+      chrome.runtime.sendMessage({handler: "openTabs", urls: hrefs})
+      return false
+    };
+  }
+
 })();

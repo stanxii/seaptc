@@ -2,6 +2,7 @@
   "manifest_version": 2,
   "name": "DKExtender",
   "version": "0.1",
+  "permissions": ["tabs"],
   "background": {
     "scripts": ["background.js"],
     "persistent": false
