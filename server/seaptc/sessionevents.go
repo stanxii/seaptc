@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -81,6 +82,8 @@ func createSessionEvent(conf *model.Conference, class *model.Class) *sessionEven
 	}
 }
 
+var wsPattern = regexp.MustCompile(`[\r\n\t ]+`)
+
 func createSpecialSessionEvent(number int, title string, start, end time.Duration, conf *model.Conference) *sessionEvent {
 	description := ""
 	if i := strings.Index(title, "\n"); i >= 0 {
@@ -89,8 +92,8 @@ func createSpecialSessionEvent(number int, title string, start, end time.Duratio
 	}
 	return &sessionEvent{
 		Number:      number,
-		Title:       strings.TrimSpace(title),
-		Description: strings.TrimSpace(description),
+		Title:       strings.TrimSpace(wsPattern.ReplaceAllLiteralString(title, " ")),
+		Description: strings.TrimSpace(wsPattern.ReplaceAllLiteralString(description, " ")),
 		StartTime:   []int{conf.Year, conf.Month, conf.Day, int(start / time.Hour), int((start % time.Hour) / time.Minute)},
 		EndTime:     []int{conf.Year, conf.Month, conf.Day, int(end / time.Hour), int((end % time.Hour) / time.Minute)},
 	}

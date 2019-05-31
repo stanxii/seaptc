@@ -7,7 +7,7 @@ var info = null;   // Display information in this element.
 // contents of the info element as appropriate.
 function fetchClass(num) {
   showMessage(`Fetching class ${num} from the server...`);
-  chrome.runtime.sendMessage({handler: "fetchClass", num: num},
+  chrome.runtime.sendMessage({"handler": "fetchClass", "num": num},
     m => {
       if (!m) {
         showMessage("Bad response from server.");

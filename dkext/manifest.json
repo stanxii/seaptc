@@ -11,7 +11,8 @@
     {
       "matches": [
         "https://*.doubleknot.com/manageevents/confirmedit.asp?*",
-        "https://*.doubleknot.com/ManageEvents/ConfirmEdit.asp?*"
+        "https://*.doubleknot.com/ManageEvents/ConfirmEdit.asp?*",
+        "https://*.doubleknot.com/ManageEvents/EditActivity.asp"
       ],
       "js": ["class.js", "sessionevent.js"]
     },

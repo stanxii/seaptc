@@ -10,8 +10,8 @@ const (
 	NumSession = 6
 
 	// Special classses.
-	NoClassClassNumber   = 1
-	OABanquetClassNumber = 2
+	NoClassClassNumber   = 100
+	OABanquetClassNumber = 700
 )
 
 type Session struct {

@@ -60,7 +60,7 @@
     anchor.href = "#";
     anchor.style = "text-decoration: none;";
     anchor.onclick = () => {
-      chrome.runtime.sendMessage({handler: "openTabs", urls: hrefs})
+      chrome.runtime.sendMessage({"handler": "openTabs", "urls": hrefs})
       return false
     };
   }

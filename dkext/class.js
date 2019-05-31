@@ -1,6 +1,12 @@
+
+
+function formatClassNumber(n) {
+  return n.toString().padStart(3, "0");
+}
+
 // descriptionValue returns the session event description for a class.
 function descriptionValue(cls) {
-  return `${cls.number}: ${cls.title}${cls.titleNote ? ` (${cls.titleNote})` : ``}`
+  return `${formatClassNumber(cls.number)}: ${cls.title}${cls.titleNote ? ` (${cls.titleNote})` : ``}`
 }
 
 function escapeHTML(s) {
@@ -36,14 +42,16 @@ function notesValue(cls) {
     mostUsefulTo = parts.join("");
   }
 
-  let session = cls.startSession == cls.endSession
-      ? `(1 hour, session ${cls.startSession})`
-      : `(${cls.endSession - cls.startSession + 1} hours, sessions ${cls.startSession} – ${cls.endSession})`
+  let session = "";
+  if (cls.startSession && cls.endSession) {
+    session = cls.startSession == cls.endSession
+      ? `<p><i>(1 hour, session ${cls.startSession})</i></p>`
+      : `<p><i>(${cls.endSession - cls.startSession + 1} hours, sessions ${cls.startSession} – ${cls.endSession})</i></p>`
+  }
 
-  return `<p><b>${cls.number}: ${titleNew}${escapeHTML(cls.title)}${escapeHTML(titleNote)}</b></p>\n\n` +
+  return `<p><b>${formatClassNumber(cls.number)}: ${titleNew}${escapeHTML(cls.title)}${escapeHTML(titleNote)}</b></p>\n\n` +
     `<p>${escapeHTML(cls.description)}</p>\n\n` +
-    mostUsefulTo +
-    `<p><i>${session}</i></p>`;
+    mostUsefulTo + session;
 }
 
 // maxAttendeesValue converts the server"s capacity to DK"s max attendees.

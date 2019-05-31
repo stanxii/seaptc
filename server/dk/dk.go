@@ -13,8 +13,6 @@ import (
 	"github.com/seaptc/server/model"
 )
 
-const oaClassNumber = 700
-
 var (
 	unitNumberPat      = regexp.MustCompile(`(\d+)`)
 	classNumberPattern = regexp.MustCompile(`^(\d\d\d):`)
@@ -153,9 +151,9 @@ func ParseCSV(rd io.Reader) ([]*model.Participant, error) {
 				return nil, errors.New("dk: found class row before PTC row")
 			}
 			n, _ := strconv.Atoi(m[1])
-			if n == oaClassNumber {
+			if n == model.OABanquetClassNumber {
 				p.OABanquet = true
-			} else {
+			} else if n != model.NoClassClassNumber {
 				p.Classes = append(p.Classes, n)
 			}
 		} else if !strings.HasSuffix(event, "Program and Training Conference") {
