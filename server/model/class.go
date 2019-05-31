@@ -67,6 +67,10 @@ func (c *Class) ProgramDescriptions(reverse bool) []*ProgramDescription {
 	return programDescriptionsForMask(c.Programs, reverse)
 }
 
+func IsValidClassNumber(number int) bool {
+	return 100 <= number && number < (NumSession+1)*100
+}
+
 func SortClasses(classes []*Class, what string) []*Class {
 	switch what {
 	case Class_Location:

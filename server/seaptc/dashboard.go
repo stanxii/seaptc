@@ -48,7 +48,7 @@ func (svc *dashboardService) makeHandler(v interface{}) func(*requestContext) er
 
 func (svc *dashboardService) getClass(rc *requestContext, pathPrefix string) (*model.Class, error) {
 	number, err := strconv.Atoi(strings.TrimPrefix(rc.request.URL.Path, pathPrefix))
-	if err != nil || number <= 0 {
+	if err != nil {
 		return nil, httperror.ErrNotFound
 	}
 	class, err := svc.store.GetClass(rc.context(), number)
@@ -185,6 +185,8 @@ func (svc *dashboardService) Serve_dashboard_conference(rc *requestContext) erro
 	setInt(&conf.Day, "day")
 	conf.RegistrationURL = data.Form.Get("registrationURL")
 	conf.CatalogStatusMessage = data.Form.Get("catalogStatusMessage")
+	conf.NoClassDescription = data.Form.Get("noClassDescription")
+	conf.OABanquetDescription = data.Form.Get("oaBanquetDescription")
 	if len(data.Invalid) > 0 {
 		return rc.respond(svc.templates.Conference, http.StatusOK, &data)
 	}

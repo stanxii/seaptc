@@ -32,7 +32,18 @@
     <input type="text" class="form-control" name="catalogStatusMessage" value="{{.Conference.CatalogStatusMessage}}">
   </div>
 
- 
+  <div class="form-group">
+    <label>No Class Description</label>
+    <textarea class="form-control" name="noClassDescription" rows="3">{{.Conference.NoClassDescription}}</textarea>
+    <small class="form-text text-muted">First line is title, remaining lines are description.</small>
+  </div>
+
+  <div class="form-group">
+    <label>OA Banquet Description</label>
+    <textarea class="form-control" name="oaBanquetDescription" rows="3">{{.Conference.OABanquetDescription}}</textarea>
+    <small class="form-text text-muted">First line is title, remaining lines are description.</small>
+  </div>
+  
   <button type="submit" name="submit" value="submit" class="btn btn-primary">Submit</button>
   <a class="btn btn-secondary" href="/dashboard/admin">Cancel</a>
 </form>

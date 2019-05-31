@@ -29,6 +29,9 @@ func (c *dsClass) Save() ([]datastore.Property, error) {
 }
 
 func (store *Store) GetClass(ctx context.Context, number int) (*model.Class, error) {
+	if !model.IsValidClassNumber(number) {
+		return nil, ErrNotFound
+	}
 	var c dsClass
 	err := store.dsClient.Get(ctx, classKey(number), &c)
 	return (*model.Class)(&c), err
@@ -70,6 +73,12 @@ func (store *Store) GetAllClassesFull(ctx context.Context) ([]*model.Class, erro
 func (store *Store) UpdateClassesFromSheet(ctx context.Context, classes []*model.Class, updateAll bool) (int, error) {
 	if len(classes) < 20 {
 		return 0, fmt.Errorf("store: more classes expected for update")
+	}
+
+	for _, c := range classes {
+		if !model.IsValidClassNumber(c.Number) {
+			return 0, fmt.Errorf("invalid class number %d", c.Number)
+		}
 	}
 
 	var mutationCount int
