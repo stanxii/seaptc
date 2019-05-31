@@ -1,0 +1,24 @@
+{
+  "manifest_version": 2,
+  "name": "DKExtender",
+  "version": "0.1",
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.doubleknot.com/manageevents/confirmedit.asp?*",
+        "https://*.doubleknot.com/ManageEvents/ConfirmEdit.asp?*"
+      ],
+      "js": ["class.js", "sessionevent.js"]
+    },
+    {
+      "matches": [
+	"https://*.doubleknot.com/manageevents/eventsmanagement.aspx?*"
+      ],
+      "js": ["programsession.js"]
+    }
+  ]
+}

@@ -1,5 +1,4 @@
-//const server = "https://seaptc.org"
-const server = "http://localhost:8080"
+// Content script for "Create and Modify a Session Event".
 
 var form = null;   // Look for controls in this form.
 var info = null;   // Display information in this element.
@@ -8,13 +7,14 @@ var info = null;   // Display information in this element.
 // contents of the info element as appropriate.
 function fetchClass(num) {
   showMessage(`Fetching class ${num} from the server...`);
-  fetch(`${server}/session-events/${num}`)
-    .then(response => response.json())
-    .then(m => {
-      if (m.error) {
+  chrome.runtime.sendMessage({handler: "fetchClass", num: num},
+    m => {
+      if (!m) {
+        showMessage("Bad response from server.");
+      } else if (m.error) {
         showMessage(m.error);
       } else if (m.result) {
-        showProposedChanges(controlValuesFromClass(m.result));
+        showProposedModifications(controlValuesFromClass(m.result));
       } else {
         showMessage("Bad response from server.");
       }
@@ -33,24 +33,61 @@ function showMessage(message) {
   }
 }
 
-// showProposedChanges replaces the info element content with button to save
-// the changes and a definition list with the proposed changes (if any).
-function showProposedChanges(values) {
-  let dl = document.createElement("dl");
-  let notFound = [];
-  for (let [name, value] of values) {
+function getControl(name) {
+    // Special cases:
+    //  - the Notes <textarea> is hidden by CKEdit, so allow that to be hidden.
+    //  - The name of the max attendees field changes depending on registrant
+    //    type charges for the session event. Look for both names.
+
     let control = form.querySelector(`[name="${name}"]`);
-    if (!control || (name !== "Notes" && control.type === "hidden")) {
+
+    if (control && (control.type !== "hidden" || name === "Notes")) {
+      return control;
+    }
+    if (name == "MaxAttendees") {
+      control = form.querySelector(`[name="MaxEventAttendees"]`);
+      if (control && control.type != "hidden") {
+        return control;
+      }
+    }
+    return nil;
+}
+
+// showProposedModifications replaces the info element content with button to save
+// the changes and a definition list with the proposed changes (if any).
+function showProposedModifications(values) {
+  let mods = document.createElement("div");
+  let notFound = [];
+
+  for (let [name, value] of values) {
+    let control = getControl(name);
+    if (!control) {
       notFound.push(name);
       continue;
     }
+
+    // DK replaces &amp; with & in the Notes field. Do the same here to avoid
+    // noise in the output.
+    if (name == "Notes") {
+      value = value.replace(/&amp;/g, "&");
+    }
+
     if (control.value !== value) {
-      dl.appendChild(document.createElement("dt")).textContent = `${name}:`;
-      let dd = dl.appendChild(document.createElement("dd"));
-      for (let v of [control.value, value]) {
-        let d = dd.appendChild(document.createElement("div"))
-        d.textContent = v ? v : "\u00A0";
-        d.style = "white-space: nowrap; overflow: hidden; max-width: 500px;"
+      if (control.value.toString().length < 30 && value.toString().length < 30) {
+        mods.appendChild(document.createElement("div")).textContent = `${name}: ${control.value} → ${value}`
+      } else {
+        mods.appendChild(document.createElement("div")).textContent = `${name}:`
+        const style ="padding-left: 2em; text-indent: -1.25em; max-width: 800px;";
+        if (control.value) {
+          let d = mods.appendChild(document.createElement("div"))
+          d.style = style
+          d.textContent = `← ${control.value}`
+        }
+        if (value) {
+          let d = mods.appendChild(document.createElement("div"))
+          d.style = style
+          d.textContent = `→ ${value}`
+         }
       }
     }
   }
@@ -58,17 +95,18 @@ function showProposedChanges(values) {
   while (info.firstChild) {
     info.removeChild(info.firstChild);
   }
-  info.appendChild(createSaveButton(values));
+  info.appendChild(createSaveButton(values, "Set and Save", true));
+  info.appendChild(createSaveButton(values, "Set", false));
   info.appendChild(createClassNumberButton());
 
   if (notFound.length) {
     info.appendChild(document.createElement("div")).textContent = `Missing or hidden controls: ${notFound.join(", ")}`;
   }
 
-  if (!dl.hasChildNodes()) {
-    info.appendChild(document.createElement("div")).textContent = `No changes.`;
+  if (mods.hasChildNodes()) {
+    info.appendChild(mods);
   } else {
-    info.appendChild(dl);
+    info.appendChild(document.createElement("div")).textContent = "Event has expected values.";
   }
 }
 
@@ -82,20 +120,20 @@ function setControlValues(values) {
       script.remove();
       continue
     }
-    let control = form.querySelector(`[name="${name}"]`);
-    if (!control || (control.type === "hidden")) {
-      console.log(`DKE: control not found or hidden: ${name}}`)
+    let control = getControl(name);
+    if (!control) {
+      console.log(`DKE: control not found or hidden: ${name}`)
       continue;
     }
     control.value = value;
-  };
+  }
 }
 
 // createClassNumberButton creates a button with a click handler that prompts
 // for and loads a class.
 function createClassNumberButton() {
   let b = document.createElement("button");
-  b.textContent = "Set class number";
+  b.textContent = "Class number";
   b.style = "margin: 5px;"
   b.onclick = (e) => {
     let num = window.prompt("Class number", getClassNumber());
@@ -108,10 +146,10 @@ function createClassNumberButton() {
 }
 
 // createSaveButton creates a button that sets the given values on the controls
-// and clicks the save button.
-function createSaveButton(values) {
+// and optionally clicks the form's save button.
+function createSaveButton(values, name, click) {
   let b = document.createElement("button");
-  b.textContent = "Save";
+  b.textContent = name;
   b.style = "margin: 5px;"
   b.onclick = (e) => {
     setControlValues(values);
@@ -120,7 +158,10 @@ function createSaveButton(values) {
       console.log("could not find save button");
       return false;
     }
-    setTimeout(() => { b.click(); }, 50);
+    if (click) {
+      // Delay click to give CKEdit an opportunity to run.
+      setTimeout(() => { b.click(); }, 100);
+    }
     return false;
   };
   return b;
@@ -150,7 +191,7 @@ function getClassNumber() {
 
   form = document.querySelector("form[action=\"UpdateActivity.asp\"]");
   if (!form) {
-    console.log("DKE: could not update activity form");
+    console.log("DKE: could not find activity form");
     return;
   }
 

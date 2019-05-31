@@ -5,14 +5,14 @@ function descriptionValue(cls) {
 
 function escapeHTML(s) {
     let div = document.createElement('div');
-    div.textContent = s;
+    div.textContent = s.replace(/\s+/g, " ");
     return div.innerHTML;
 }
 
 // notesValue returns the session event notes for a class.
 function notesValue(cls) {
   let titleNew = cls.titleNew
-    ? `<span style="color: red">${escapeHTML(cls.titleNew)}<span> `
+    ? `<span style="color: red">${escapeHTML(cls.titleNew)}</span> `
     : "";
 
   let titleNote = cls.titleNote
@@ -40,10 +40,10 @@ function notesValue(cls) {
       ? `(1 hour, session ${cls.startSession})`
       : `(${cls.endSession - cls.startSession + 1} hours, sessions ${cls.startSession} – ${cls.endSession})`
 
-  return `<p><b>${cls.number}: ${titleNew}${escapeHTML(cls.title)}${titleNote}</b></p>\n\n` +
+  return `<p><b>${cls.number}: ${titleNew}${escapeHTML(cls.title)}${escapeHTML(titleNote)}</b></p>\n\n` +
     `<p>${escapeHTML(cls.description)}</p>\n\n` +
     mostUsefulTo +
-    `<p>${session}</p>`;
+    `<p><i>${session}</i></p>`;
 }
 
 // maxAttendeesValue converts the server"s capacity to DK"s max attendees.
@@ -54,7 +54,7 @@ function maxAttendeesValue(cls) {
   if (cls.capacity < 0) {
     return "0";
   } else if (cls.capacity > 0) {
-    return cls.capactiy.toString();
+    return cls.capacity.toString();
   } else {
     return ""
   }
@@ -84,6 +84,7 @@ function ampmValue(t) {
   }
   return "PM";
 }
+
 
 function controlValuesFromClass(cls) {
   let regBy = [cls.startTime[0],cls.startTime[1], cls.startTime[2], 9, 30];

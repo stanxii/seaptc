@@ -81,6 +81,7 @@ func createSessionEvent(conf *model.Conference, class *model.Class) *sessionEven
 		EndSession:   class.End() + 1,
 		StartTime:    []int{conf.Year, conf.Month, conf.Day, int(startHour), int(startMinute)},
 		EndTime:      []int{conf.Year, conf.Month, conf.Day, int(endHour), int(endMinute)},
+		Capacity:     class.Capacity,
 		Programs:     programs,
 	}
 }
