@@ -130,6 +130,11 @@ type handler struct {
 }
 
 func (h *handler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+	if s := strings.TrimPrefix(request.Host, "dashboard."); s != request.Host {
+		// Redirect for those accustomed to previous year's dashboard URL.
+		http.Redirect(response, request, fmt.Sprintf("https://%s/dashboard", s), http.StatusSeeOther)
+	}
+
 	a := h.application
 	rc := requestContext{
 		application: a,

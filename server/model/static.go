@@ -10,7 +10,7 @@ const (
 	NumSession = 6
 
 	// Special classses.
-	NoClassClassNumber   = 100
+	NoClassClassNumber   = 999
 	OABanquetClassNumber = 700
 )
 

@@ -124,7 +124,7 @@
     &mdash; {{.Description}}
     <em>(
       {{- if le .Length 1}}1&nbsp;hour, session&nbsp;{{add .End 1}}
-      {{- else if le .Length 6}}all&nbsp;day, sessions&nbsp;1&nbsp;&ndash;&nbsp;6
+      {{- else if ge .Length 6}}all&nbsp;day, sessions&nbsp;1&nbsp;&ndash;&nbsp;6
       {{- else}}{{.Length}}&nbsp;hours, sessions&nbsp;{{add .Start 1}}&nbsp;&ndash;&nbsp;{{add .End 1}}
       {{- end -}}
       )</em>

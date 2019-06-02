@@ -27,7 +27,7 @@ function notesValue(cls) {
 
   let mostUsefulTo = "";
   if (cls.programs) {
-    let parts = ["<p>This class is most useful to "];
+    let parts = ["\n\n<p>This class is most useful to "];
     for (let i = 0; i < cls.programs.length; i++) {
       if (i === 0) {
         // no separator
@@ -38,20 +38,19 @@ function notesValue(cls) {
       }
       parts.push(cls.programs[i]);
     }
-    parts.push(".</p>\n\n");
+    parts.push(".</p>");
     mostUsefulTo = parts.join("");
   }
 
   let session = "";
   if (cls.startSession && cls.endSession) {
     session = cls.startSession == cls.endSession
-      ? `<p><i>(1 hour, session ${cls.startSession})</i></p>`
-      : `<p><i>(${cls.endSession - cls.startSession + 1} hours, sessions ${cls.startSession} – ${cls.endSession})</i></p>`
+      ? `\n\n<p><i>(1 hour, session ${cls.startSession})</i></p>`
+      : `\n\n<p><i>(${cls.endSession - cls.startSession + 1} hours, sessions ${cls.startSession} – ${cls.endSession})</i></p>`
   }
 
   return `<p><b>${formatClassNumber(cls.number)}: ${titleNew}${escapeHTML(cls.title)}${escapeHTML(titleNote)}</b></p>\n\n` +
-    `<p>${escapeHTML(cls.description)}</p>\n\n` +
-    mostUsefulTo + session;
+    `<p>${escapeHTML(cls.description)}</p>${mostUsefulTo}${session}`;
 }
 
 // maxAttendeesValue converts the server"s capacity to DK"s max attendees.
