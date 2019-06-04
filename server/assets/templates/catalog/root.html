@@ -62,8 +62,6 @@
       <a class="navbar-brand ml-auto d-flex justify-content-center"
         href="https://seattlebsa.org/ptc">{{.Conference.Year}}
         Program &amp; Training Conference</a>
-      {{with $.Conference.RegistrationURL}}<a class="d-sm-none d-md-inline btn btn-light"
-        href="{{.}}">Register</a>{{end}}
       <ul class="navbar-nav mr-auto">
       </ul>
     </div>
@@ -76,7 +74,10 @@
       </div>
       <div id="sidebar" class="col-md-4 col-lg-3 d-none d-md-block sidebar-expanded">
         <div class="list-group sticky-top sticky-offset">
-          <a href="https://seattlebsa.org/ptc" class="list-group-item list-group-item-action">PTC Home</a>
+          <a href="https://seattlebsa.org/ptc" class="list-group-item list-group-item-action">PTC Home &rarr;</a>
+          {{with $.Conference.RegistrationURL}}
+            <a href="{{.}}" class="list-group-item list-group-item-action">Register &rarr;</a>
+          {{end}}
           <a href="/catalog" class="list-group-item list-group-item-action">All Classes</a>
           <a href="/catalog/new" class="list-group-item list-group-item-action">New for 2019</a>
           <a href="/catalog/cub" class="list-group-item list-group-item-action">Cub Scout Adults</a>
@@ -90,7 +91,10 @@
     </div>
     <div id="sidebar-mobile" class="d-md-none">
       <div id="MobileSidebar" class="list-group sticky-top mobile-sidebar position-fixed collapse ml-auto">
-        <a href="https://seattlebsa.org/ptc" class="list-group-item list-group-item-action">PTC Home</a>
+        <a href="https://seattlebsa.org/ptc" class="list-group-item list-group-item-action">PTC Home &rarr;</a>
+        {{with $.Conference.RegistrationURL}}
+          <a href="{{.}}" class="list-group-item list-group-item-action">Register &rarr;</a>
+        {{end}}
         <a href="/catalog" class="list-group-item list-group-item-action">All Classes</a>
         <a href="/catalog/new" class="list-group-item list-group-item-action">New for 2019</a>
         <a href="/catalog/cub" class="list-group-item list-group-item-action">Cub Scout Adults</a>
