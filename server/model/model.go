@@ -1,6 +1,12 @@
 // Package model define the types stored in the database.
 package model
 
+import (
+	"encoding/binary"
+	"fmt"
+	"io"
+)
+
 func equalIntSlice(a, b []int) bool {
 	if len(a) != len(b) {
 		return false
@@ -23,4 +29,30 @@ func equalStringSlice(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+func hashValue(w io.Writer, v interface{}) {
+	switch v := v.(type) {
+	case string:
+		binary.Write(w, binary.LittleEndian, len(v))
+		io.WriteString(w, v)
+	case []int:
+		binary.Write(w, binary.LittleEndian, len(v))
+		for _, i := range v {
+			binary.Write(w, binary.LittleEndian, int64(i))
+		}
+	case []string:
+		binary.Write(w, binary.LittleEndian, len(v))
+		for _, s := range v {
+			binary.Write(w, binary.LittleEndian, len(s))
+			io.WriteString(w, s)
+		}
+	case int:
+		binary.Write(w, binary.LittleEndian, int64(v))
+	default:
+		err := binary.Write(w, binary.LittleEndian, v)
+		if err != nil {
+			panic(fmt.Sprintf("cannot hash value of type %T", v))
+		}
+	}
 }

@@ -3,7 +3,7 @@
 {{define "body"}}{{with .Data}}
 <h3>{{.Class.Number}}: {{.Class.Title}}</h3>
 <p>
-<table class="mb-3 infoblock">
+<table class="mb-3 table-sm">
   <tr><th>Catalog</th><td><a href="/catalog/#c{{.Class.Number}}">/catalog/#c{{.Class.Number}}</td></tr>
   {{if .InstructorView}}
     <tr><th>Instructors</th><td>{{range $i, $u := .Class.InstructorNames}}{{if $i}}, {{end}}{{.}}{{end}}</td></tr>

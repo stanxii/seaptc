@@ -11,13 +11,13 @@
     <label>Year / Month / Day</label>
     <div class="form-row">
       <div class="col">
-        <input type="text" class="form-control {{.Invalid.year}}" placeholder="Year" name="year" value="{{.Form.Get "year"}}">
+        <input type="text" class="form-control{{isInvalid .Invalid "year"}}" placeholder="Year" name="year" value="{{.Form.Get "year"}}">
       </div>
       <div class="col">
-        <input type="text" class="form-control {{.Invalid.month}}" placeholder="Month" name="month" value="{{.Form.Get "month"}}">
+        <input type="text" class="form-control{{isInvalid .Invalid "month"}}" placeholder="Month" name="month" value="{{.Form.Get "month"}}">
       </div>
       <div class="col">
-        <input type="text" class="form-control {{.Invalid.day}}" placeholder="Day" name="day" value="{{.Form.Get "day"}}">
+        <input type="text" class="form-control{{isInvalid .Invalid "day "}}" placeholder="Day" name="day" value="{{.Form.Get "day"}}">
       </div>
     </div>
   </div>

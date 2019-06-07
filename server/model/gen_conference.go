@@ -3,9 +3,12 @@
 package model
 
 const (
-	Conference_Day             = "day"
-	Conference_Lunches         = "lunches"
-	Conference_Month           = "month"
-	Conference_RegistrationURL = "registrationURL"
-	Conference_Year            = "year"
+	Conference_CatalogStatusMessage = "catalogStatusMessage"
+	Conference_Day                  = "day"
+	Conference_Lunches              = "lunches"
+	Conference_Month                = "month"
+	Conference_NoClassDescription   = "noClassDescription"
+	Conference_OABanquetDescription = "oaBanquetDescription"
+	Conference_RegistrationURL      = "registrationURL"
+	Conference_Year                 = "year"
 )

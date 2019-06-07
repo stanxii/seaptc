@@ -21,6 +21,12 @@
 	"https://*.doubleknot.com/manageevents/eventsmanagement.aspx?*"
       ],
       "js": ["programsession.js"]
+    },
+    {
+      "matches": [
+	"https://*.doubleknot.com/manageevents/viewregistrations.aspx?*"
+      ],
+      "js": ["viewregistrations.js"]
     }
   ]
 }

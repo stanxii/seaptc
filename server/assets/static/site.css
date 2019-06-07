@@ -2,16 +2,6 @@
     background-color: whitesmoke;
 }
 
-.infoblock th {
-    white-space: nowrap;
-    padding-right: .4rem;
-}
-
-.infoblock td, .infoblock th {
-    padding: .3rem;
-    vertical-align: top;
-}
-
 .smaller-text {
     font-size: 90%;
 }

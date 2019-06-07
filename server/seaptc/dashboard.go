@@ -11,6 +11,7 @@ import (
 	"github.com/garyburd/web/httperror"
 	"github.com/garyburd/web/templates"
 
+	"github.com/seaptc/server/dk"
 	"github.com/seaptc/server/model"
 	"github.com/seaptc/server/sheet"
 	"github.com/seaptc/server/store"
@@ -19,12 +20,15 @@ import (
 type dashboardService struct {
 	*application
 	templates struct {
-		Index      *templates.Template `html:"dashboard/index.html dashboard/root.html common.html"`
-		Error      *templates.Template `html:"dashboard/error.html dashboard/root.html common.html"`
-		Classes    *templates.Template `html:"dashboard/classes.html dashboard/root.html common.html"`
-		Class      *templates.Template `html:"dashboard/class.html dashboard/root.html common.html"`
-		Admin      *templates.Template `html:"dashboard/admin.html dashboard/root.html common.html"`
-		Conference *templates.Template `html:"dashboard/conference.html dashboard/root.html common.html"`
+		Index              *templates.Template `html:"dashboard/index.html dashboard/root.html common.html"`
+		Error              *templates.Template `html:"dashboard/error.html dashboard/root.html common.html"`
+		Classes            *templates.Template `html:"dashboard/classes.html dashboard/root.html common.html"`
+		Participants       *templates.Template `html:"dashboard/participants.html dashboard/root.html common.html"`
+		Participant        *templates.Template `html:"dashboard/participant.html dashboard/root.html common.html"`
+		Class              *templates.Template `html:"dashboard/class.html dashboard/root.html common.html"`
+		Admin              *templates.Template `html:"dashboard/admin.html dashboard/root.html common.html"`
+		Conference         *templates.Template `html:"dashboard/conference.html dashboard/root.html common.html"`
+		FetchRegistrations *templates.Template `html:"dashboard/fetchRegistrations.html dashboard/root.html common.html"`
 	}
 }
 
@@ -67,19 +71,17 @@ func (svc *dashboardService) Serve_dashboard(rc *requestContext) error {
 	return rc.respond(svc.templates.Index, http.StatusOK, nil)
 }
 
-func (svc *dashboardService) Serve_dashboard_participants(rc *requestContext) error {
-	return rc.respond(svc.templates.Index, http.StatusOK, nil)
-}
-
 func (svc *dashboardService) Serve_dashboard_classes(rc *requestContext) error {
-	var data struct {
-		Classes []*model.Class
-	}
 	classes, err := svc.store.GetAllClasses(rc.context())
 	if err != nil {
 		return err
 	}
-	data.Classes = model.SortClasses(classes, rc.request.FormValue("sort"))
+	model.SortClasses(classes, rc.request.FormValue("sort"))
+	var data = struct {
+		Classes []*model.Class
+	}{
+		Classes: classes,
+	}
 	return rc.respond(svc.templates.Classes, http.StatusOK, &data)
 }
 
@@ -113,6 +115,118 @@ func (svc *dashboardService) Serve_dashboard_classes_(rc *requestContext) error 
 	return rc.respond(svc.templates.Class, http.StatusOK, &data)
 }
 
+func (svc *dashboardService) Serve_dashboard_participants(rc *requestContext) error {
+	if !rc.isStaff {
+		return httperror.ErrForbidden
+	}
+	participants, err := svc.store.GetAllParticipants(rc.context())
+	if err != nil {
+		return err
+	}
+	model.SortParticipants(participants, rc.request.FormValue("sort"))
+	var data = struct {
+		Participants []*model.Participant
+	}{
+		Participants: participants,
+	}
+	return rc.respond(svc.templates.Participants, http.StatusOK, &data)
+}
+
+func (svc *dashboardService) Serve_dashboard_participants_(rc *requestContext) error {
+	if !rc.isStaff {
+		return httperror.ErrForbidden
+	}
+
+	id := strings.TrimPrefix(rc.request.URL.Path, "/dashboard/participants/")
+
+	participant, err := svc.store.GetParticipant(rc.context(), id)
+	if err == store.ErrNotFound {
+		return httperror.ErrNotFound
+	} else if err != nil {
+		return err
+	}
+
+	var data = struct {
+		Participant *model.Participant
+	}{
+		Participant: participant,
+	}
+	return rc.respond(svc.templates.Participant, http.StatusOK, &data)
+}
+
+func (svc *dashboardService) Serve_dashboard_upload__registrations(rc *requestContext) error {
+	if rc.request.Method != "POST" {
+		return httperror.ErrMethodNotAllowed
+	}
+	if !rc.isAdmin {
+		return httperror.ErrForbidden
+	}
+
+	f, _, err := rc.request.FormFile("file")
+	if err == http.ErrMissingFile {
+		return &httperror.Error{Status: 400, Message: "Export file not uploaded"}
+	}
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	participants, err := dk.ParseCSV(f)
+	if err != nil {
+		return err
+	}
+
+	n, err := svc.store.ImportParticipants(rc.context(), participants)
+	if err != nil {
+		return err
+	}
+
+	return rc.redirect("/dashboard/admin", "info", "%d registrations loaded from file, %d modified", len(participants), n)
+}
+
+func (svc *dashboardService) Serve_dashboard_fetch__registrations(rc *requestContext) error {
+	if !rc.isAdmin {
+		return httperror.ErrForbidden
+	}
+
+	rc.request.ParseForm()
+	data := struct {
+		Form    url.Values
+		Invalid map[string]string
+		Err     error
+	}{
+		rc.request.Form,
+		make(map[string]string),
+		nil,
+	}
+
+	if rc.request.Method != "POST" {
+		return rc.respond(svc.templates.FetchRegistrations, http.StatusOK, &data)
+	}
+
+	url := rc.request.FormValue("url")
+	if url == "" {
+		data.Invalid["url"] = ""
+	}
+
+	if len(data.Invalid) > 0 {
+		return rc.respond(svc.templates.FetchRegistrations, http.StatusOK, &data)
+	}
+
+	participants, err := dk.FetchCSV(rc.context(), url)
+	if err != nil {
+		data.Err = err
+		return rc.respond(svc.templates.FetchRegistrations, http.StatusOK, &data)
+	}
+
+	n, err := svc.store.ImportParticipants(rc.context(), participants)
+	if err != nil {
+		return err
+	}
+
+	return rc.redirect("/dashboard/admin", "info", "%d registrations loaded from file, %d modified", len(participants), n)
+}
+
 func (svc *dashboardService) Serve_dashboard_refresh__classes(rc *requestContext) error {
 	if rc.request.Method != "POST" {
 		return httperror.ErrMethodNotAllowed
@@ -131,7 +245,7 @@ func (svc *dashboardService) Serve_dashboard_refresh__classes(rc *requestContext
 		return err
 	}
 
-	n, err := svc.store.UpdateClassesFromSheet(rc.context(), classes, rc.request.FormValue("all") != "")
+	n, err := svc.store.ImportClasses(rc.context(), classes)
 	if err != nil {
 		return err
 	}

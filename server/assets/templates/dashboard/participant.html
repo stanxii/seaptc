@@ -1,0 +1,11 @@
+{{define "title"}}PTC: {{$.Data.Participant.Name}}{{end}}
+
+{{define "body"}}{{with .Data}}
+<h3>{{.Participant.Name}}</h3>
+<p>
+<table class="mb-3 table-sm">
+  <tr><th>Email</th><td>{{.Participant.Email}}</td></tr>
+  <tr><th>Classes</th><td>{{range $i, $c := .Participant.Classes}}{{if $i}}, {{end}}<a href="/dashboard/classes/{{$c}}">{{$c}}</a>{{end}}<td></tr>
+</table>
+
+{{end}}{{end}}

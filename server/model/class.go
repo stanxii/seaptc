@@ -9,26 +9,26 @@ import (
 
 // Class represents a PTC class.
 //
-// The Sheet tag marks fields that are copied from the planning spreadsheet.
+// The Import tag marks fields that are copied from the planning spreadsheet.
 type Class struct {
-	Number           int      `json:"number" datastore:"number" fields:"Sheet"`
-	Length           int      `json:"length" datastore:"length" fields:"Sheet"`
-	Responsibility   string   `json:"responsibility"  datastore:"responsibility" fields:"Sheet"`
-	New              string   `json:"new" datastore:"new,noindex" fields:"Sheet"`
-	Title            string   `json:"title" datastore:"title" fields:"Sheet"`
-	TitleNote        string   `json:"titleNote" datastore:"titleNote,noindex" fields:"Sheet"`
-	Description      string   `json:"description" datastore:"description,noindex" fields:"Sheet"`
-	Programs         int      `json:"programs" datastore:"programs,noindex" fields:"Sheet"`
-	Capacity         int      `json:"capacity" datastore:"capacity" fields:"Sheet"`
-	Location         string   `json:"location" datastore:"location" fields:"Sheet"`
-	SpreadsheetRow   int      `json:"-" datastore:"spreadsheetRow,noindex" fields:"Sheet"`
-	InstructorNames  []string `json:"instructorNames" datastore:"instructorNames,noindex" fields:"Sheet"`
-	InstructorEmails []string `json:"instructorEmails" datastore:"instructorEmails,noindex" fields:"Sheet"`
-	EvaluationCodes  []string `json:"evaluationCodes" datastore:"evaluationCodes,noindex" fields:"Sheet"`
-	AccessToken      string   `json:"accessToken" datastore:"accessToken,noindex" fields:"Sheet"`
+	Number           int      `json:"number" datastore:"number" fields:"Import"`
+	Length           int      `json:"length" datastore:"length" fields:"Import"`
+	Responsibility   string   `json:"responsibility"  datastore:"responsibility" fields:"Import"`
+	New              string   `json:"new" datastore:"new,noindex" fields:"Import"`
+	Title            string   `json:"title" datastore:"title" fields:"Import"`
+	TitleNote        string   `json:"titleNote" datastore:"titleNote,noindex" fields:"Import"`
+	Description      string   `json:"description" datastore:"description,noindex" fields:"Import"`
+	Programs         int      `json:"programs" datastore:"programs,noindex" fields:"Import"`
+	Capacity         int      `json:"capacity" datastore:"capacity" fields:"Import"`
+	Location         string   `json:"location" datastore:"location" fields:"Import"`
+	SpreadsheetRow   int      `json:"-" datastore:"spreadsheetRow,noindex" fields:"Import"`
+	InstructorNames  []string `json:"instructorNames" datastore:"instructorNames,noindex" fields:"Import"`
+	InstructorEmails []string `json:"instructorEmails" datastore:"instructorEmails,noindex" fields:"Import"`
+	EvaluationCodes  []string `json:"evaluationCodes" datastore:"evaluationCodes,noindex" fields:"Import"`
+	AccessToken      string   `json:"accessToken" datastore:"accessToken,noindex" fields:"Import"`
 
-	Junk1 bool   `json:"-" datastore:"dkNeedsUpdate,omitempty"`
-	Junk2 string `json:"-" datastore:"titleNotes,omitempty"`
+	// Hash computed from planning spreadhseet fields.
+	ImportHash string `datastore:"importHash"`
 }
 
 // Start returns zero based index of the starting session.
@@ -71,7 +71,7 @@ func IsValidClassNumber(number int) bool {
 	return 100 <= number && number < (NumSession+1)*100
 }
 
-func SortClasses(classes []*Class, what string) []*Class {
+func SortClasses(classes []*Class, what string) {
 	switch what {
 	case Class_Location:
 		sort.Slice(classes, func(i, j int) bool { return classes[i].Location < classes[j].Location })
@@ -82,5 +82,4 @@ func SortClasses(classes []*Class, what string) []*Class {
 	default:
 		sort.Slice(classes, func(i, j int) bool { return classes[i].Number < classes[j].Number })
 	}
-	return classes
 }
