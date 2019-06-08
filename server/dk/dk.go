@@ -1,10 +1,12 @@
 package dk
 
 import (
+	"context"
 	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"regexp"
 	"sort"
 	"strconv"
@@ -12,8 +14,6 @@ import (
 
 	"github.com/seaptc/server/model"
 )
-
-const oaClassNumber = 700
 
 var (
 	unitNumberPat      = regexp.MustCompile(`(\d+)`)
@@ -41,7 +41,6 @@ var setters = []struct {
 	{"Registered By Phone", func(p *participant, s string) { p.RegisteredByPhone = s }},
 	{"First Name", func(p *participant, s string) { p.FirstName = s }},
 	{"Last Name", func(p *participant, s string) { p.LastName = s }},
-	//XXX {"Nickname", func(p *participant, s string) { p.Nickname = s }},
 	{"Suffix", func(p *participant, s string) { p.Suffix = s }},
 	{"Generic 1", func(p *participant, s string) { p.BSANumber = s }},
 	{"Type", func(p *participant, s string) { p.registrationType = s }},
@@ -56,6 +55,7 @@ var setters = []struct {
 	{"Unit Type", func(p *participant, s string) { p.UnitType = s }},
 	{"Unit Number", func(p *participant, s string) { p.UnitNumber = s }},
 	{"Staff role", func(p *participant, s string) { p.StaffRole = s }},
+	{"Nickname for PTC name badge", func(p *participant, s string) { p.Nickname = s }},
 	{"How many years have you been in scouting?", func(p *participant, s string) { p.ScoutingYears = s }},
 	{"Print QR code on PTC name badge?", func(p *participant, s string) { p.ShowQRCode = s == "Yes" }},
 
@@ -70,7 +70,7 @@ var setters = []struct {
 	{"How did you hear about the PTC?:Council website", addMarketing},
 	{"How did you hear about the PTC?:Attended before", addMarketing},
 	{"How did you hear about the PTC?:Wood Badge", addMarketing},
-	//XXX {"What other ways did you hear about the PTC?", addMarketing},
+	{"What other ways did you hear about the PTC?", addMarketing},
 
 	{"Which classes are you teaching?", func(r *participant, s string) { r.instructorDescription = s }},
 	{"Which organization are you representing on the midway?", func(r *participant, s string) { r.midwayDescription = s }},
@@ -153,9 +153,9 @@ func ParseCSV(rd io.Reader) ([]*model.Participant, error) {
 				return nil, errors.New("dk: found class row before PTC row")
 			}
 			n, _ := strconv.Atoi(m[1])
-			if n == oaClassNumber {
+			if n == model.OABanquetClassNumber {
 				p.OABanquet = true
-			} else {
+			} else if n != model.NoClassClassNumber {
 				p.Classes = append(p.Classes, n)
 			}
 		} else if !strings.HasSuffix(event, "Program and Training Conference") {
@@ -268,4 +268,25 @@ func cleanParticipant(p *participant) {
 	if i := strings.LastIndex(p.UnitType, " "); i >= 0 {
 		p.UnitType = p.UnitType[i+1:]
 	}
+}
+
+func FetchCSV(ctx context.Context, url string) ([]*model.Participant, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error fetching %s: %s", url, http.StatusText(resp.StatusCode))
+	}
+
+	defer resp.Body.Close()
+	return ParseCSV(resp.Body)
 }

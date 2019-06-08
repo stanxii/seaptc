@@ -1,45 +1,51 @@
 package model
 
 import (
+	"sort"
 	"strings"
 )
 
 //go:generate go run gogen.go -input participant.go -output gen_participant.go Participant
 
 type Participant struct {
-	RegistrationNumber  string `json:"registrationNumber" datastore:"registrationNumber,noindex" fields:"DK"`
-	RegisteredByName    string `json:"registeredByName" datastore:"registeredByName,noindex" fields:"DK"`
-	RegisteredByEmail   string `json:"registeredByEmail" datastore:"registeredByEmail,noindex" fields:"DK"`
-	RegisteredByPhone   string `json:"registeredByPhone" datastore:"registeredByPhone,noindex" fields:"DK"`
-	FirstName           string `json:"firstName" datastore:"firstName,noindex" fields:"DK"`
-	LastName            string `json:"lastName" datastore:"lastName,noindex" fields:"DK"`
-	Nickname            string `json:"nickname" datastore:"nickname,noindex" fields:"DK"`
-	Suffix              string `json:"suffix" datastore:"suffix,noindex" fields:"DK"`
-	Staff               bool   `json:"staff" datastore:"staff,noindex" fields:"DK"`
-	Youth               bool   `json:"youth" datastore:"youth,noindex" fields:"DK"`
-	Phone               string `json:"phone" datastore:"phone,noindex" fields:"DK"`
-	Email               string `json:"email" datastore:"email,noindex" fields:"DK"`
-	Address             string `json:"address" datastore:"address,noindex" fields:"DK"`
-	City                string `json:"city" datastore:"city,noindex" fields:"DK"`
-	State               string `json:"state" datastore:"state,noindex" fields:"DK"`
-	Zip                 string `json:"zip" datastore:"zip,noindex" fields:"DK"`
-	StaffRole           string `json:"staffRole" datastore:"staffRole,noindex" fields:"DK"` // Instructor, Support, Midway
-	Council             string `json:"council" datastore:"council,noindex" fields:"DK"`
-	District            string `json:"district" datastore:"district,noindex" fields:"DK"`
-	UnitType            string `json:"unitType" datastore:"unitType,noindex" fields:"DK"`
-	UnitNumber          string `json:"unitNumber" datastore:"unitNumber,noindex" fields:"DK"`
-	DietaryRestrictions string `json:"dietaryRestrictions" datastore:"dietaryRestrictions,noindex" fields:"DK"`
-	Marketing           string `json:"marketing" datastore:"marketing,noindex" fields:"DK"`
-	ScoutingYears       string `json:"scoutingYears" datastore:"scoutingYears,noindex" fields:"DK"`
-	ShowQRCode          bool   `json:"showQRCode" datastore:"showQRCode,noindex" fields:"DK"`
-	BSANumber           string `json:"bsaNumber" datastore:"bsaNumber,noindex" fields:"DK"`
-	Classes             []int  `json:"classes" datastore:"classes,noindex" fields:"DK"`
-	StaffDescription    string `json:"staffDescription" datastore:"staffDescription,noindex" fields:"DK"` // instructor classes, midway org
-	OABanquet           bool   `json:"oaBanquet" datastore:"oaBanquet,noindex" fields:"DK"`
+	ID string `json:"id" datastore:"-" fields:""`
+
+	RegistrationNumber  string `json:"registrationNumber" datastore:"registrationNumber,noindex" fields:"Import"`
+	RegisteredByName    string `json:"registeredByName" datastore:"registeredByName,noindex" fields:"Import"`
+	RegisteredByEmail   string `json:"registeredByEmail" datastore:"registeredByEmail,noindex" fields:"Import"`
+	RegisteredByPhone   string `json:"registeredByPhone" datastore:"registeredByPhone,noindex" fields:"Import"`
+	FirstName           string `json:"firstName" datastore:"firstName" fields:"Import"`
+	LastName            string `json:"lastName" datastore:"lastName" fields:"Import"`
+	Nickname            string `json:"nickname" datastore:"nickname,noindex" fields:"Import"`
+	Suffix              string `json:"suffix" datastore:"suffix" fields:"Import"`
+	Staff               bool   `json:"staff" datastore:"staff" fields:"Import"`
+	Youth               bool   `json:"youth" datastore:"youth" fields:"Import"`
+	Phone               string `json:"phone" datastore:"phone,noindex" fields:"Import"`
+	Email               string `json:"email" datastore:"email,noindex" fields:"Import"`
+	Address             string `json:"address" datastore:"address,noindex" fields:"Import"`
+	City                string `json:"city" datastore:"city,noindex" fields:"Import"`
+	State               string `json:"state" datastore:"state,noindex" fields:"Import"`
+	Zip                 string `json:"zip" datastore:"zip,noindex" fields:"Import"`
+	StaffRole           string `json:"staffRole" datastore:"staffRole" fields:"Import"` // Instructor, Support, Midway
+	Council             string `json:"council" datastore:"council" fields:"Import"`
+	District            string `json:"district" datastore:"district" fields:"Import"`
+	UnitType            string `json:"unitType" datastore:"unitType" fields:"Import"`
+	UnitNumber          string `json:"unitNumber" datastore:"unitNumber" fields:"Import"`
+	DietaryRestrictions string `json:"dietaryRestrictions" datastore:"dietaryRestrictions" fields:"Import"`
+	Marketing           string `json:"marketing" datastore:"marketing,noindex" fields:"Import"`
+	ScoutingYears       string `json:"scoutingYears" datastore:"scoutingYears,noindex" fields:"Import"`
+	ShowQRCode          bool   `json:"showQRCode" datastore:"showQRCode,noindex" fields:"Import"`
+	BSANumber           string `json:"bsaNumber" datastore:"bsaNumber,noindex" fields:"Import"`
+	Classes             []int  `json:"classes" datastore:"classes" fields:"Import"`
+	StaffDescription    string `json:"staffDescription" datastore:"staffDescription" fields:"Import"` // instructor classes, midway org
+	OABanquet           bool   `json:"oaBanquet" datastore:"oaBanquet" fields:"Import"`
 
 	InstructorClasses []int  `json:"instructorClasses" datastore:"instructorClasses,noindex"`
 	Notes             string `json:"notes" datastore:"notes,noindex" fields:""`
-	NoShow            bool   `json:"noShow" datastore:"noShow,noindex" feilds:""`
+	NoShow            bool   `json:"noShow" datastore:"noShow,noindex" fields:""`
+
+	// Hash computed from Doubleknot registration fields.
+	ImportHash string `datastore:"importHash"`
 }
 
 // Type returns a short description of the participant's registration type.
@@ -99,4 +105,11 @@ func (p *Participant) LookupLunch(c *Conference) *Lunch {
 		return &Lunch{Seating: 1, Location: "TBD"}
 	}
 	return c.Lunches[0]
+}
+
+func SortParticipants(participants []*Participant, what string) {
+	switch what {
+	default:
+		sort.Slice(participants, func(i, j int) bool { return participants[i].ID < participants[j].ID })
+	}
 }

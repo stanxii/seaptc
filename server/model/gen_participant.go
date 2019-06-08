@@ -2,6 +2,11 @@
 
 package model
 
+import (
+	"crypto/md5"
+	"encoding/hex"
+)
+
 const (
 	Participant_Address             = "address"
 	Participant_BSANumber           = "bsaNumber"
@@ -12,6 +17,8 @@ const (
 	Participant_District            = "district"
 	Participant_Email               = "email"
 	Participant_FirstName           = "firstName"
+	Participant_ID                  = "-"
+	Participant_ImportHash          = "importHash"
 	Participant_InstructorClasses   = "instructorClasses"
 	Participant_LastName            = "lastName"
 	Participant_Marketing           = "marketing"
@@ -20,6 +27,9 @@ const (
 	Participant_Notes               = "notes"
 	Participant_OABanquet           = "oaBanquet"
 	Participant_Phone               = "phone"
+	Participant_RegisteredByEmail   = "registeredByEmail"
+	Participant_RegisteredByName    = "registeredByName"
+	Participant_RegisteredByPhone   = "registeredByPhone"
 	Participant_RegistrationNumber  = "registrationNumber"
 	Participant_ScoutingYears       = "scoutingYears"
 	Participant_ShowQRCode          = "showQRCode"
@@ -34,36 +44,39 @@ const (
 	Participant_Zip                 = "zip"
 )
 
-func (x *Participant) CopyDKFields(y *Participant) {
-	x.Address = y.Address
-	x.BSANumber = y.BSANumber
-	x.City = y.City
-	x.Classes = y.Classes
-	x.Council = y.Council
-	x.DietaryRestrictions = y.DietaryRestrictions
-	x.District = y.District
-	x.Email = y.Email
-	x.FirstName = y.FirstName
-	x.LastName = y.LastName
-	x.Marketing = y.Marketing
-	x.Nickname = y.Nickname
-	x.OABanquet = y.OABanquet
-	x.Phone = y.Phone
-	x.RegistrationNumber = y.RegistrationNumber
-	x.ScoutingYears = y.ScoutingYears
-	x.ShowQRCode = y.ShowQRCode
-	x.Staff = y.Staff
-	x.StaffDescription = y.StaffDescription
-	x.StaffRole = y.StaffRole
-	x.State = y.State
-	x.Suffix = y.Suffix
-	x.UnitNumber = y.UnitNumber
-	x.UnitType = y.UnitType
-	x.Youth = y.Youth
-	x.Zip = y.Zip
+func (x *Participant) CopyImportFieldsTo(y *Participant) {
+	y.Address = x.Address
+	y.BSANumber = x.BSANumber
+	y.City = x.City
+	y.Classes = x.Classes
+	y.Council = x.Council
+	y.DietaryRestrictions = x.DietaryRestrictions
+	y.District = x.District
+	y.Email = x.Email
+	y.FirstName = x.FirstName
+	y.LastName = x.LastName
+	y.Marketing = x.Marketing
+	y.Nickname = x.Nickname
+	y.OABanquet = x.OABanquet
+	y.Phone = x.Phone
+	y.RegisteredByEmail = x.RegisteredByEmail
+	y.RegisteredByName = x.RegisteredByName
+	y.RegisteredByPhone = x.RegisteredByPhone
+	y.RegistrationNumber = x.RegistrationNumber
+	y.ScoutingYears = x.ScoutingYears
+	y.ShowQRCode = x.ShowQRCode
+	y.Staff = x.Staff
+	y.StaffDescription = x.StaffDescription
+	y.StaffRole = x.StaffRole
+	y.State = x.State
+	y.Suffix = x.Suffix
+	y.UnitNumber = x.UnitNumber
+	y.UnitType = x.UnitType
+	y.Youth = x.Youth
+	y.Zip = x.Zip
 }
 
-func (x *Participant) EqualDKFields(y *Participant) bool {
+func (x *Participant) EqualImportFields(y *Participant) bool {
 	return x.Address == y.Address &&
 		x.BSANumber == y.BSANumber &&
 		x.City == y.City &&
@@ -78,6 +91,9 @@ func (x *Participant) EqualDKFields(y *Participant) bool {
 		x.Nickname == y.Nickname &&
 		x.OABanquet == y.OABanquet &&
 		x.Phone == y.Phone &&
+		x.RegisteredByEmail == y.RegisteredByEmail &&
+		x.RegisteredByName == y.RegisteredByName &&
+		x.RegisteredByPhone == y.RegisteredByPhone &&
 		x.RegistrationNumber == y.RegistrationNumber &&
 		x.ScoutingYears == y.ScoutingYears &&
 		x.ShowQRCode == y.ShowQRCode &&
@@ -90,4 +106,40 @@ func (x *Participant) EqualDKFields(y *Participant) bool {
 		x.UnitType == y.UnitType &&
 		x.Youth == y.Youth &&
 		x.Zip == y.Zip
+}
+
+func (x *Participant) HashImportFields() string {
+	h := md5.New()
+	hashValue(h, "3a845a4ac1390a4620ce8f6c9e7cdfea")
+	hashValue(h, x.Address)
+	hashValue(h, x.BSANumber)
+	hashValue(h, x.City)
+	hashValue(h, x.Classes)
+	hashValue(h, x.Council)
+	hashValue(h, x.DietaryRestrictions)
+	hashValue(h, x.District)
+	hashValue(h, x.Email)
+	hashValue(h, x.FirstName)
+	hashValue(h, x.LastName)
+	hashValue(h, x.Marketing)
+	hashValue(h, x.Nickname)
+	hashValue(h, x.OABanquet)
+	hashValue(h, x.Phone)
+	hashValue(h, x.RegisteredByEmail)
+	hashValue(h, x.RegisteredByName)
+	hashValue(h, x.RegisteredByPhone)
+	hashValue(h, x.RegistrationNumber)
+	hashValue(h, x.ScoutingYears)
+	hashValue(h, x.ShowQRCode)
+	hashValue(h, x.Staff)
+	hashValue(h, x.StaffDescription)
+	hashValue(h, x.StaffRole)
+	hashValue(h, x.State)
+	hashValue(h, x.Suffix)
+	hashValue(h, x.UnitNumber)
+	hashValue(h, x.UnitType)
+	hashValue(h, x.Youth)
+	hashValue(h, x.Zip)
+	sum := h.Sum(nil)
+	return hex.EncodeToString(sum[:])
 }

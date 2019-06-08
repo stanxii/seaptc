@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -18,7 +20,7 @@ import (
 type sessionEventsService struct {
 	*application
 	templates struct {
-		Error *templates.Template `text:"sessionevents/error.txt"`
+		Error *templates.Template `text:"sessionevents/error.json"`
 	}
 }
 
@@ -41,98 +43,83 @@ func (svc *sessionEventsService) makeHandler(v interface{}) func(*requestContext
 }
 
 type sessionEvent struct {
-	Number      int      `json:"number"`
-	Title       string   `json:"title"`
-	New         string   `json:"titleNew"` // rename to avoid js reserved word
-	TitleNote   string   `json:"titleNote"`
-	Description string   `json:"description"`
-	StartTime   []int    `json:"startTime"` // year, month, day, hour, minute
-	EndTime     []int    `json:"endTime"`   // year, month, day, hour, minute
-	Capacity    int      `json:"capacity"`  // 0: no limit, -1 no space
-	Programs    []string `json:"programs"`
+	Number       int      `json:"number"`
+	Title        string   `json:"title"`
+	New          string   `json:"titleNew"` // rename to avoid js reserved word
+	TitleNote    string   `json:"titleNote"`
+	Description  string   `json:"description"`
+	StartSession int      `json:"startSession"`
+	EndSession   int      `json:"endSession"`
+	StartTime    []int    `json:"startTime"` // year, month, day, hour, minute
+	EndTime      []int    `json:"endTime"`   // year, month, day, hour, minute
+	Capacity     int      `json:"capacity"`  // 0: no limit, -1 no space
+	Programs     []string `json:"programs"`
 }
 
 func createSessionEvent(conf *model.Conference, class *model.Class) *sessionEvent {
 	start := model.Sessions[class.Start()].Start
-	startHour := start / time.Hour
-	startMinute := (start - time.Hour*startHour) / time.Minute
-
 	end := model.Sessions[class.End()].End
-	endHour := end / time.Hour
-	endMinute := (end - time.Hour*endHour) / time.Minute
 
 	var programs []string
-	for _, pd := range class.ProgramDescriptions(false) {
-		programs = append(programs, pd.Name)
+	if class.Programs != (1<<model.NumPrograms)-1 {
+		for _, pd := range class.ProgramDescriptions(false) {
+			programs = append(programs, pd.Name)
+		}
 	}
 
 	return &sessionEvent{
-		Number:      class.Number,
-		New:         class.New,
-		Title:       class.Title,
-		TitleNote:   class.TitleNote,
-		Description: class.Description,
-		StartTime:   []int{conf.Year, conf.Month, conf.Day, int(startHour), int(startMinute)},
-		EndTime:     []int{conf.Year, conf.Month, conf.Day, int(endHour), int(endMinute)},
-		Programs:    programs,
+		Number:       class.Number,
+		New:          class.New,
+		Title:        class.Title,
+		TitleNote:    class.TitleNote,
+		Description:  class.Description,
+		StartSession: class.Start() + 1,
+		EndSession:   class.End() + 1,
+		StartTime:    []int{conf.Year, conf.Month, conf.Day, int(start / time.Hour), int((start % time.Hour) / time.Minute)},
+		EndTime:      []int{conf.Year, conf.Month, conf.Day, int(end / time.Hour), int((end % time.Hour) / time.Minute)},
+		Capacity:     class.Capacity,
+		Programs:     programs,
 	}
 }
 
-func (svc *sessionEventsService) respond(rc *requestContext, data interface{}) error {
+var wsPattern = regexp.MustCompile(`[\r\n\t ]+`)
+
+func createSpecialSessionEvent(number int, title string, start, end time.Duration, conf *model.Conference) *sessionEvent {
+	description := ""
+	if i := strings.Index(title, "\n"); i >= 0 {
+		description = title[i+1:]
+		title = title[:i]
+	}
+	return &sessionEvent{
+		Number:      number,
+		Title:       strings.TrimSpace(wsPattern.ReplaceAllLiteralString(title, " ")),
+		Description: strings.TrimSpace(wsPattern.ReplaceAllLiteralString(description, " ")),
+		StartTime:   []int{conf.Year, conf.Month, conf.Day, int(start / time.Hour), int((start % time.Hour) / time.Minute)},
+		EndTime:     []int{conf.Year, conf.Month, conf.Day, int(end / time.Hour), int((end % time.Hour) / time.Minute)},
+	}
+}
+
+func (svc *sessionEventsService) handleCORS(rc *requestContext) bool {
 	h := rc.response.Header()
 	h.Set("Access-Control-Allow-Origin", "*")
 	h.Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 	h.Set("Access-Control-Allow-Headers", "*")
-	h.Set("Content-Type", "application/json")
-	switch rc.request.Method {
-	case "OPTIONS":
-		rc.response.WriteHeader(http.StatusNoContent)
-	case "HEAD":
-		rc.response.WriteHeader(http.StatusOK)
-	default:
-		p, err := json.MarshalIndent(data, "", "   ")
-		if err != nil {
-			return err
-		}
-		rc.response.Write(p)
+	if rc.request.Method != "OPTIONS" {
+		return false
 	}
-	return nil
-}
-
-func (svc *sessionEventsService) Serve_session__events(rc *requestContext) error {
-	if rc.request.Method != "GET" {
-		return svc.respond(rc, nil)
-	}
-
-	classes, err := svc.store.GetAllClassesFull(rc.context())
-	if err != nil {
-		return err
-	}
-	conf, err := svc.store.GetConference(rc.context())
-	if err != nil {
-		return err
-	}
-
-	var result []*sessionEvent
-	for _, class := range classes {
-		result = append(result, createSessionEvent(conf, class))
-	}
-	return svc.respond(rc, result)
+	rc.response.WriteHeader(http.StatusNoContent)
+	return true
 }
 
 func (svc *sessionEventsService) Serve_session__events_(rc *requestContext) error {
-	if rc.request.Method != "GET" {
-		return svc.respond(rc, nil)
+	if svc.handleCORS(rc) {
+		return nil
 	}
 
-	number, err := strconv.Atoi(strings.TrimPrefix(rc.request.URL.Path, "/session-events/"))
+	numString := strings.TrimPrefix(rc.request.URL.Path, "/session-events/")
+	number, err := strconv.Atoi(numString)
 	if err != nil {
-		return httperror.ErrNotFound
-	}
-
-	class, err := svc.store.GetClass(rc.context(), number)
-	if err == store.ErrNotFound {
-		err = httperror.ErrNotFound
+		return &httperror.Error{Status: http.StatusNotFound, Message: fmt.Sprintf("Class %q not found.", numString)}
 	}
 
 	conf, err := svc.store.GetConference(rc.context())
@@ -140,5 +127,39 @@ func (svc *sessionEventsService) Serve_session__events_(rc *requestContext) erro
 		return err
 	}
 
-	return svc.respond(rc, createSessionEvent(conf, class))
+	var se *sessionEvent
+	switch number {
+	case model.NoClassClassNumber:
+		se = createSpecialSessionEvent(number, conf.NoClassDescription,
+			model.Sessions[0].Start, model.Sessions[model.NumSession-1].End,
+			conf)
+	case model.OABanquetClassNumber:
+		se = createSpecialSessionEvent(number, conf.OABanquetDescription,
+			17*time.Hour+30*time.Minute,
+			21*time.Hour+30*time.Minute,
+			conf)
+	default:
+		class, err := svc.store.GetClass(rc.context(), number)
+		if err == store.ErrNotFound {
+			return &httperror.Error{
+				Status: http.StatusNotFound, Message: fmt.Sprintf("Class %q not found.", numString),
+				Err: err,
+			}
+		} else if err != nil {
+			return err
+		}
+		se = createSessionEvent(conf, class)
+	}
+
+	rc.response.Header().Set("Content-Type", "application/json")
+	if rc.request.Method == "HEAD" {
+		return nil
+	}
+	data := map[string]interface{}{"result": se}
+	p, err := json.MarshalIndent(data, "", "   ")
+	if err != nil {
+		return err
+	}
+	rc.response.Write(p)
+	return nil
 }

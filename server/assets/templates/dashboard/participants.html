@@ -1,0 +1,19 @@
+{{define "title"}}PTC: Participants{{end}}
+{{define "body"}}
+  <h3>Participants</h3>
+  <p>
+  <table class="table table-sm table-hover smaller-text mb-3">
+   <thead>
+      <tr>
+        <th>{{$.QP "Name" "sort" ""}}</th>
+      </tr>
+    <tbody>
+    {{range .Data.Participants -}}
+      <tr>
+        <td><a href="/dashboard/participants/{{.ID}}">{{.Name}}</a></td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+
+{{end}}

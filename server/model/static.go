@@ -6,7 +6,13 @@ import (
 	"time"
 )
 
-const NumSession = 6
+const (
+	NumSession = 6
+
+	// Special classses.
+	NoClassClassNumber   = 999
+	OABanquetClassNumber = 700
+)
 
 type Session struct {
 	Start time.Duration

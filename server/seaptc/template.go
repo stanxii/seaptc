@@ -115,6 +115,12 @@ func newTemplateManager(assetDir string) *templates.Manager {
 				fileHashes.Store(s, u)
 				return u, nil
 			},
+			"isInvalid": func(m map[string]string, k string) string {
+				if _, invalid := m[k]; invalid {
+					return " is-invalid"
+				}
+				return ""
+			},
 		},
 		TextFuncs: map[string]interface{}{
 			"csv": func(s string) string {

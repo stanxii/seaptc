@@ -6,7 +6,7 @@
   classes is available <a href="/catalog">here</a>.
 
   {{with .SuggestedSchedules}}
-    <h4>Suggested Schedules</h4>
+    <h4 class="mb-3">Suggested Schedules</h4>
 
     {{range .}}
       <h5>{{.Name}}</h5>
@@ -21,10 +21,10 @@
       </ul>
     {{end}}
 
-  <p><sup>†</sup> These classes are not part of your basic training and you may wish to substitute a different class.
+    <p><sup>†</sup> These classes are not part of your basic training and you may wish to substitute a different class.
   {{end}}
 
-  {{template "register"}}
+  {{template "register" .}}
 
   <h3>Class Descriptions</h3>
   <table class="table">

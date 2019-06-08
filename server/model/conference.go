@@ -35,11 +35,14 @@ type Conference struct {
 	Month int `json:"month" datastore:"month,noindex"`
 	Day   int `json:"day" datastore:"day,noindex"`
 
-	RegistrationURL string `json:"registrationURL" datastore:"registrationURL,noindex"`
+	RegistrationURL string `json:"registrationURL" datastore:"registrationURL,noindex,omitempty"`
 
 	// Use this message to announce when registration will open or that the
 	// current catalog is for the previous event.
-	CatalogStatusMessage string `json:"catalogStatusMessage" datastore:"catalogStatusMessage,noindex"`
+	CatalogStatusMessage string `json:"catalogStatusMessage" datastore:"catalogStatusMessage,noindex,omitempty"`
+
+	NoClassDescription   string `json:"noClassDescription" datastore:"noClassDescription,noindex,omitempty"`
+	OABanquetDescription string `json:"oaBanquetDescription" datastore:"oaBanquetDescription,noindex,omitempty"`
 
 	lunch struct {
 		once       sync.Once

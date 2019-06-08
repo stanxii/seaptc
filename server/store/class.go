@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/seaptc/server/model"
 
@@ -17,19 +18,28 @@ func classKey(number int) *datastore.Key {
 	return datastore.IDKey(classKind, int64(number), classesEntityGroupKey)
 }
 
-type dsClass model.Class
-
-func (c *dsClass) Load(ps []datastore.Property) error {
-	return datastore.LoadStruct((*model.Class)(c), ps)
+var deletedClassFields = map[string]bool{
+	"dkNeedsUpdate": true,
+	"titleNotes":    true,
 }
 
-func (c *dsClass) Save() ([]datastore.Property, error) {
+// xClass overrides datastore load and save on an model.Class.
+type xClass model.Class
+
+func (c *xClass) Load(ps []datastore.Property) error {
+	return datastore.LoadStruct((*model.Class)(c), filterProperties(ps, deletedClassFields))
+}
+
+func (c *xClass) Save() ([]datastore.Property, error) {
 	ps, err := datastore.SaveStruct((*model.Class)(c))
 	return ps, err
 }
 
 func (store *Store) GetClass(ctx context.Context, number int) (*model.Class, error) {
-	var c dsClass
+	if !model.IsValidClassNumber(number) {
+		return nil, ErrNotFound
+	}
+	var c xClass
 	err := store.dsClient.Get(ctx, classKey(number), &c)
 	return (*model.Class)(&c), err
 }
@@ -46,17 +56,17 @@ var (
 )
 
 func (store *Store) getAllClasses(ctx context.Context, q *datastore.Query) ([]*model.Class, error) {
-	// XXX var classes []*dsClass
-	var classes []*model.Class
-	_, err := store.dsClient.GetAll(ctx, q, &classes)
+	var xclasses []*xClass
+	_, err := store.dsClient.GetAll(ctx, q, &xclasses)
 	if err != nil {
+		log.Println("BOOOM")
 		return nil, err
 	}
-	result := make([]*model.Class, len(classes))
-	for i, c := range classes {
-		result[i] = (*model.Class)(c)
+	classes := make([]*model.Class, len(xclasses))
+	for i, xc := range xclasses {
+		classes[i] = (*model.Class)(xc)
 	}
-	return result, nil
+	return classes, nil
 }
 
 func (store *Store) GetAllClasses(ctx context.Context) ([]*model.Class, error) {
@@ -67,53 +77,91 @@ func (store *Store) GetAllClassesFull(ctx context.Context) ([]*model.Class, erro
 	return store.getAllClasses(ctx, allClassesFullQuery)
 }
 
-func (store *Store) UpdateClassesFromSheet(ctx context.Context, classes []*model.Class, updateAll bool) (int, error) {
+func (store *Store) ImportClasses(ctx context.Context, classes []*model.Class) (int, error) {
 	if len(classes) < 20 {
 		return 0, fmt.Errorf("store: more classes expected for update")
+	}
+
+	for _, c := range classes {
+		if !model.IsValidClassNumber(c.Number) {
+			return 0, fmt.Errorf("invalid class number %d", c.Number)
+		}
 	}
 
 	var mutationCount int
 
 	_, err := store.dsClient.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
 
-		var xclasses []*dsClass
-		_, err := store.dsClient.GetAll(ctx,
-			datastore.NewQuery(classKind).Ancestor(classesEntityGroupKey).Transaction(tx),
-			&xclasses)
+		xhashes := make(map[int]string)
+
+		// Step 1: Get all keys
+
+		keys, err := store.dsClient.GetAll(ctx,
+			datastore.NewQuery(classKind).Ancestor(classesEntityGroupKey).KeysOnly(), nil)
 		if err != nil {
 			return err
 		}
 
-		m := make(map[int]*model.Class)
-		for _, xc := range xclasses {
-			m[xc.Number] = (*model.Class)(xc)
+		for _, k := range keys {
+			xhashes[int(k.ID)] = ""
 		}
+
+		// Step 2: Query for import field hash values.
+
+		var hashValues []struct {
+			Hash string `datastore:"importHash"`
+		}
+
+		keys, err = store.dsClient.GetAll(ctx,
+			datastore.NewQuery(classKind).Ancestor(classesEntityGroupKey).Project(model.Class_ImportHash),
+			&hashValues)
+		if err != nil {
+			return err
+		}
+
+		for i, k := range keys {
+			xhashes[int(k.ID)] = hashValues[i].Hash
+		}
+
+		// Step 3: For each particpant either insert or update...
 
 		var mutations []*datastore.Mutation
 
 		for _, c := range classes {
-			xc, ok := m[c.Number]
+			key := classKey(c.Number)
+			hash := c.HashImportFields()
+			xhash, ok := xhashes[c.Number]
 			if !ok {
-				mutations = append(mutations, datastore.NewUpsert(classKey(c.Number), (*dsClass)(c)))
+				// New class.
+				c.ImportHash = hash
+				mutations = append(mutations, datastore.NewInsert(classKey(c.Number), (*xClass)(c)))
 				continue
 			}
-			if updateAll || !xc.EqualSheetFields(c) {
-				xc.CopySheetFields(c)
-				c.Junk1 = false // XXX
-				mutations = append(mutations, datastore.NewUpsert(classKey(xc.Number), (*dsClass)(xc)))
+			delete(xhashes, c.Number)
+			if hash == xhash {
+				continue
 			}
-			delete(m, c.Number)
+			// Modified class.
+			var xc xClass
+			if err := tx.Get(key, &xc); err != nil {
+				return err
+			}
+			xc.ImportHash = hash
+			c.CopyImportFieldsTo((*model.Class)(&xc))
+			mutations = append(mutations, datastore.NewUpdate(key, &xc))
 		}
 
-		for _, xc := range m {
-			mutations = append(mutations, datastore.NewDelete(classKey(xc.Number)))
-		}
+		// Step 4: Delete classes missing from the imported data.
 
-		if len(mutations) == 0 {
-			return nil
+		for number := range xhashes {
+			mutations = append(mutations, datastore.NewDelete(classKey(number)))
 		}
 
 		mutationCount = len(mutations)
+		if mutationCount == 0 {
+			return nil
+		}
+
 		_, err = tx.Mutate(mutations...)
 		return err
 	})

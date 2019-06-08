@@ -4,6 +4,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"go/ast"
@@ -11,6 +13,7 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -40,9 +43,22 @@ func (f *fieldInfo) Equal() string {
 	return fmt.Sprintf(eq, f.Go, f.Go)
 }
 
+type fieldSet struct {
+	Fields []*fieldInfo
+}
+
+func (fs fieldSet) NamesHash() string {
+	h := md5.New()
+	for _, f := range fs.Fields {
+		io.WriteString(h, f.Go)
+	}
+	sum := h.Sum(nil)
+	return hex.EncodeToString(sum[:])
+}
+
 type typeInfo struct {
 	Name      string
-	FieldSets map[string][]*fieldInfo
+	FieldSets map[string]fieldSet
 	Fields    []*fieldInfo
 }
 
@@ -75,7 +91,15 @@ var codeTemplate = template.Must(template.New("").Parse(`
 
 package model
 
-{{range $type := .}}
+{{with .Imports}}
+import (
+    {{- range $k, $v := .}}
+    {{printf "%q" $k}}
+    {{- end}}
+)
+{{end}}
+
+{{range $type := .Types}}
 const (
     {{range $type.Fields -}}
     {{$type.Name}}_{{.Go}} = {{printf "%q" .Store}}
@@ -83,16 +107,26 @@ const (
 )
 {{end}}
 
-{{range $type := .}}{{range $name, $fields := $type.FieldSets -}}
-    func (x *{{$type.Name}}) Copy{{$name}}Fields(y *{{$type.Name}}) {
-        {{range $fields -}}
-            x.{{.Go}} = y.{{.Go}}
+{{range $type := .Types}}{{range $name, $fieldSet := $type.FieldSets -}}
+    func (x *{{$type.Name}}) Copy{{$name}}FieldsTo(y *{{$type.Name}}) {
+        {{range $fieldSet.Fields -}}
+            y.{{.Go}} = x.{{.Go}}
         {{end -}}
     }
 
     func (x *{{$type.Name}}) Equal{{$name}}Fields(y *{{$type.Name}}) bool {
-        return {{range $i, $f := $fields -}}{{if $i}} &&
+        return {{range $i, $f := $fieldSet.Fields -}}{{if $i}} &&
         {{end}}{{$f.Equal}}{{end}}
+    }
+
+    func (x *{{$type.Name}}) Hash{{$name}}Fields() string {
+        h := md5.New()
+        hashValue(h, {{printf "%q" $fieldSet.NamesHash}})
+        {{range $fieldSet.Fields -}}
+            hashValue(h, x.{{.Go}})
+        {{end -}}
+        sum := h.Sum(nil)
+        return hex.EncodeToString(sum[:])
     }
 
 {{end}}{{end}}
@@ -119,7 +153,7 @@ func main() {
 
 		ti := typeInfo{
 			Name:      typeName,
-			FieldSets: make(map[string][]*fieldInfo),
+			FieldSets: make(map[string]fieldSet),
 		}
 
 		for _, f := range st.Fields.List {
@@ -147,21 +181,40 @@ func main() {
 				ti.Fields = append(ti.Fields, field)
 				if tag := tag.Get("fields"); tag != "" {
 					for _, set := range strings.Split(tag, ",") {
-						ti.FieldSets[set] = append(ti.FieldSets[set], field)
+						fs := ti.FieldSets[set]
+						fs.Fields = append(fs.Fields, field)
+						ti.FieldSets[set] = fs
 					}
 				}
 			}
 		}
 
 		sortNames(ti.Fields)
-		for _, names := range ti.FieldSets {
-			sortNames(names)
+		for _, fs := range ti.FieldSets {
+			sortNames(fs.Fields)
 		}
 		tis = append(tis, &ti)
 	}
 
+	imports := map[string]bool{}
+	for _, ti := range tis {
+		if len(ti.FieldSets) > 0 {
+			imports["crypto/md5"] = true
+			imports["encoding/hex"] = true
+			break
+		}
+	}
+
+	data := struct {
+		Types   []*typeInfo
+		Imports map[string]bool
+	}{
+		tis,
+		imports,
+	}
+
 	var buf bytes.Buffer
-	if err := codeTemplate.Execute(&buf, tis); err != nil {
+	if err := codeTemplate.Execute(&buf, &data); err != nil {
 		log.Fatal(err)
 	}
 	code, err := format.Source(buf.Bytes())
