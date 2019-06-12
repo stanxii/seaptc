@@ -2,7 +2,11 @@
   "manifest_version": 2,
   "name": "DKExtender",
   "version": "0.1",
-  "permissions": ["tabs"],
+  "permissions": [
+    "tabs",
+    "http://localhost:8080/session-events/*",
+    "https://seatpc.org/session-events/*"
+  ],
   "background": {
     "scripts": ["background.js"],
     "persistent": false

@@ -43,7 +43,13 @@
     <textarea class="form-control" name="oaBanquetDescription" rows="3">{{.Conference.OABanquetDescription}}</textarea>
     <small class="form-text text-muted">First line is title, remaining lines are description.</small>
   </div>
-  
+
+  <div class="form-group">
+    <label>Lunches</label>
+    <textarea class="form-control{{isInvalid .Invalid "lunches"}}" name="lunches" rows="12">{{.Form.Get "lunches"}}</textarea>
+    <div class="invalid-feedback">{{index .Invalid "lunches"}}</div>
+  </div>
+
   <button type="submit" name="submit" value="submit" class="btn btn-primary">Submit</button>
   <a class="btn btn-secondary" href="/dashboard/admin">Cancel</a>
 </form>

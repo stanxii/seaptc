@@ -99,23 +99,7 @@ func createSpecialSessionEvent(number int, title string, start, end time.Duratio
 	}
 }
 
-func (svc *sessionEventsService) handleCORS(rc *requestContext) bool {
-	h := rc.response.Header()
-	h.Set("Access-Control-Allow-Origin", "*")
-	h.Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-	h.Set("Access-Control-Allow-Headers", "*")
-	if rc.request.Method != "OPTIONS" {
-		return false
-	}
-	rc.response.WriteHeader(http.StatusNoContent)
-	return true
-}
-
 func (svc *sessionEventsService) Serve_session__events_(rc *requestContext) error {
-	if svc.handleCORS(rc) {
-		return nil
-	}
-
 	numString := strings.TrimPrefix(rc.request.URL.Path, "/session-events/")
 	number, err := strconv.Atoi(numString)
 	if err != nil {

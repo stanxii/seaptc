@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -382,17 +383,20 @@ func (svc *dashboardService) Serve_dashboard_conference(rc *requestContext) erro
 		Invalid    map[string]string
 		Conference *model.Conference
 		Programs   []*model.ProgramDescription
+		Lunches    string
 	}{
-		rc.request.Form,
-		make(map[string]string),
-		conf,
-		model.ProgramDescriptions,
+		Form:       rc.request.Form,
+		Invalid:    make(map[string]string),
+		Conference: conf,
+		Programs:   model.ProgramDescriptions,
 	}
 
 	if rc.request.Method != "POST" {
 		data.Form.Set("year", strconv.Itoa(conf.Year))
 		data.Form.Set("month", strconv.Itoa(conf.Month))
 		data.Form.Set("day", strconv.Itoa(conf.Day))
+		p, _ := json.MarshalIndent(conf.Lunches, "", "  ")
+		data.Form.Set("lunches", string(p))
 		return rc.respond(svc.templates.Conference, http.StatusOK, &data)
 	}
 
@@ -406,6 +410,11 @@ func (svc *dashboardService) Serve_dashboard_conference(rc *requestContext) erro
 	setInt(&conf.Year, "year")
 	setInt(&conf.Month, "month")
 	setInt(&conf.Day, "day")
+
+	if err := json.Unmarshal([]byte(data.Form.Get("lunches")), &conf.Lunches); err != nil {
+		data.Invalid["lunches"] = err.Error()
+	}
+
 	conf.RegistrationURL = data.Form.Get("registrationURL")
 	conf.CatalogStatusMessage = data.Form.Get("catalogStatusMessage")
 	conf.NoClassDescription = data.Form.Get("noClassDescription")
@@ -432,16 +441,4 @@ func (svc *dashboardService) Serve_dashboard_admin(rc *requestContext) error {
 		DevMode: svc.devMode,
 	}
 	return rc.respond(svc.templates.Admin, http.StatusOK, &data)
-}
-
-func (svc *dashboardService) handleSessionEventsCORS(rc *requestContext) bool {
-	h := rc.response.Header()
-	h.Set("Access-Control-Allow-Origin", "*")
-	h.Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-	h.Set("Access-Control-Allow-Headers", "*")
-	if rc.request.Method != "OPTIONS" {
-		return false
-	}
-	rc.response.WriteHeader(http.StatusNoContent)
-	return true
 }
