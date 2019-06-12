@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/seaptc/server/model"
 
@@ -18,16 +17,27 @@ func classKey(number int) *datastore.Key {
 	return datastore.IDKey(classKind, int64(number), classesEntityGroupKey)
 }
 
-var deletedClassFields = map[string]bool{
-	"dkNeedsUpdate": true,
-	"titleNotes":    true,
-}
-
 // xClass overrides datastore load and save on an model.Class.
 type xClass model.Class
 
+var deletedClassFields = map[string]bool{
+	"dkNeedsUpdate": true,
+	"titleNotes":    true,
+	"number":        true,
+}
+
 func (c *xClass) Load(ps []datastore.Property) error {
-	return datastore.LoadStruct((*model.Class)(c), filterProperties(ps, deletedClassFields))
+	err := datastore.LoadStruct((*model.Class)(c), filterProperties(ps, deletedClassFields))
+	if err != nil {
+		return err
+	}
+	(*model.Class)(c).Init()
+	return nil
+}
+
+func (c *xClass) LoadKey(k *datastore.Key) error {
+	c.Number = int(k.ID)
+	return nil
 }
 
 func (c *xClass) Save() ([]datastore.Property, error) {
@@ -46,7 +56,6 @@ func (store *Store) GetClass(ctx context.Context, number int) (*model.Class, err
 
 var (
 	allClassesQuery = datastore.NewQuery(classKind).Ancestor(classesEntityGroupKey).Project(
-		model.Class_Number,
 		model.Class_Length,
 		model.Class_Title,
 		model.Class_Capacity,
@@ -59,7 +68,6 @@ func (store *Store) getAllClasses(ctx context.Context, q *datastore.Query) ([]*m
 	var xclasses []*xClass
 	_, err := store.dsClient.GetAll(ctx, q, &xclasses)
 	if err != nil {
-		log.Println("BOOOM")
 		return nil, err
 	}
 	classes := make([]*model.Class, len(xclasses))
@@ -123,7 +131,7 @@ func (store *Store) ImportClasses(ctx context.Context, classes []*model.Class) (
 			xhashes[int(k.ID)] = hashValues[i].Hash
 		}
 
-		// Step 3: For each particpant either insert or update...
+		// Step 3: For each class insert or update...
 
 		var mutations []*datastore.Mutation
 

@@ -49,27 +49,22 @@ func (tc *templateContext) XSRFToken(path string) htemp.HTML {
 	return htemp.HTML(fmt.Sprintf(`<input type="hidden" name="_xsrftoken" value="%s">`, t))
 }
 
-func (tc *templateContext) QP(text string, kvs ...string) (htemp.HTML, error) {
-	if len(kvs)%2 != 0 {
-		return "", errors.New("keys and values not in pairs")
+func (tc *templateContext) Sort(text string, key string) (htemp.HTML, error) {
+	if key == "" {
+		return "", errors.New("sort key cannot be empty string")
 	}
-	u := tc.rc.request.URL
-	qp := u.Query()
-	for i := 0; i < len(kvs); i += 2 {
-		k := kvs[i]
-		v := kvs[i+1]
-		if v == "" {
-			delete(qp, k)
+	request := tc.rc.request
+	if request.FormValue("sort") == key {
+		if key[0] == '-' {
+			key = key[1:]
 		} else {
-			qp.Set(k, v)
+			key = "-" + key
 		}
 	}
-	rq := qp.Encode()
-	if u.RawQuery == rq {
-		return htemp.HTML(htemp.HTMLEscapeString(text)), nil
-	}
-	ucopy := *u
-	ucopy.RawQuery = rq
+	qp := request.URL.Query()
+	qp.Set("sort", key)
+	ucopy := *request.URL
+	ucopy.RawQuery = qp.Encode()
 	return htemp.HTML(`<a href="` + ucopy.RequestURI() + `">` + htemp.HTMLEscapeString(text) + `</a>`), nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -76,11 +77,53 @@ func (svc *dashboardService) Serve_dashboard_classes(rc *requestContext) error {
 	if err != nil {
 		return err
 	}
+
+	registered, err := svc.store.GetClassParticipantCounts(rc.context())
+	if err != nil {
+		return err
+	}
+
 	model.SortClasses(classes, rc.request.FormValue("sort"))
+	switch sortKey, reverse := model.SortKeyReverse(rc.request.FormValue("sort")); sortKey {
+	case "registered":
+		sort.SliceStable(classes, func(i, j int) bool {
+			return registered[classes[i].Number] < registered[classes[j].Number]
+		})
+		reverse(classes)
+	case "available":
+		sort.SliceStable(classes, func(i, j int) bool {
+			m := classes[i].Capacity - registered[classes[i].Number]
+			if classes[i].Capacity == 0 {
+				m = 9999
+			}
+			n := classes[j].Capacity - registered[classes[j].Number]
+			if classes[j].Capacity == 0 {
+				n = 9999
+			}
+			return m < n
+		})
+		reverse(classes)
+	}
+
 	var data = struct {
-		Classes []*model.Class
+		Classes    []*model.Class
+		Registered interface{}
+		Available  interface{}
 	}{
 		Classes: classes,
+		Registered: func(c *model.Class) string {
+			n := registered[c.Number]
+			if n == 0 {
+				return ""
+			}
+			return strconv.Itoa(n)
+		},
+		Available: func(c *model.Class) string {
+			if c.Capacity == 0 {
+				return ""
+			}
+			return strconv.Itoa(c.Capacity - registered[c.Number])
+		},
 	}
 	return rc.respond(svc.templates.Classes, http.StatusOK, &data)
 }
@@ -92,11 +135,12 @@ func (svc *dashboardService) Serve_dashboard_classes_(rc *requestContext) error 
 	}
 
 	var data = struct {
-		Class          *model.Class
-		Participants   []*model.Participant
-		InstructorView bool
-		InstructorURL  string
-		Lunch          *model.Lunch // XXX
+		InstructorView    bool
+		Class             *model.Class
+		Participants      []*model.Participant
+		ParticipantEmails []string
+		InstructorURL     string
+		Lunch             *model.Lunch // XXX
 	}{
 		Class:          class,
 		InstructorView: rc.isStaff,
@@ -112,22 +156,41 @@ func (svc *dashboardService) Serve_dashboard_classes_(rc *requestContext) error 
 			data.InstructorView = true
 		}
 	}
+
+	if data.InstructorView {
+		data.Participants, err = svc.store.GetClassParticipants(rc.context(), class.Number)
+		if err != nil {
+			return err
+		}
+		model.SortParticipants(data.Participants, rc.request.FormValue("sort"))
+		for _, p := range data.Participants {
+			data.ParticipantEmails = append(data.ParticipantEmails, p.Emails()...)
+		}
+	}
+
 	return rc.respond(svc.templates.Class, http.StatusOK, &data)
 }
 
 func (svc *dashboardService) Serve_dashboard_participants(rc *requestContext) error {
-	if !rc.isStaff {
-		return httperror.ErrForbidden
-	}
 	participants, err := svc.store.GetAllParticipants(rc.context())
 	if err != nil {
 		return err
 	}
+	classes, err := svc.store.GetAllClasses(rc.context())
+	if err != nil {
+		return err
+	}
+	classMap := model.ClassMap(classes)
+
 	model.SortParticipants(participants, rc.request.FormValue("sort"))
 	var data = struct {
-		Participants []*model.Participant
+		Participants   []*model.Participant
+		SessionClasses interface{}
 	}{
 		Participants: participants,
+		SessionClasses: func(p *model.Participant) []*model.SessionClass {
+			return model.ParticipantSessionClasses(p, classMap)
+		},
 	}
 	return rc.respond(svc.templates.Participants, http.StatusOK, &data)
 }
@@ -146,10 +209,18 @@ func (svc *dashboardService) Serve_dashboard_participants_(rc *requestContext) e
 		return err
 	}
 
+	classes, err := svc.store.GetAllClasses(rc.context())
+	if err != nil {
+		return err
+	}
+	sessionClasses := model.ParticipantSessionClasses(participant, model.ClassMap(classes))
+
 	var data = struct {
-		Participant *model.Participant
+		Participant    *model.Participant
+		SessionClasses []*model.SessionClass
 	}{
-		Participant: participant,
+		participant,
+		sessionClasses,
 	}
 	return rc.respond(svc.templates.Participant, http.StatusOK, &data)
 }

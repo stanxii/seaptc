@@ -11,7 +11,8 @@ import (
 //
 // The Import tag marks fields that are copied from the planning spreadsheet.
 type Class struct {
-	Number           int      `json:"number" datastore:"number" fields:"Import"`
+	Number int `json:"number" datastore:"_" fields:"Import"`
+
 	Length           int      `json:"length" datastore:"length" fields:"Import"`
 	Responsibility   string   `json:"responsibility"  datastore:"responsibility" fields:"Import"`
 	New              string   `json:"new" datastore:"new,noindex" fields:"Import"`
@@ -29,6 +30,10 @@ type Class struct {
 
 	// Hash computed from planning spreadhseet fields.
 	ImportHash string `datastore:"importHash"`
+}
+
+// Init initializes derived fields.
+func (c *Class) Init() {
 }
 
 // Start returns zero based index of the starting session.
@@ -71,8 +76,9 @@ func IsValidClassNumber(number int) bool {
 	return 100 <= number && number < (NumSession+1)*100
 }
 
-func SortClasses(classes []*Class, what string) {
-	switch what {
+func SortClasses(classes []*Class, key string) {
+	key, reverse := SortKeyReverse(key)
+	switch key {
 	case Class_Location:
 		sort.Slice(classes, func(i, j int) bool { return classes[i].Location < classes[j].Location })
 	case Class_Responsibility:
@@ -82,4 +88,13 @@ func SortClasses(classes []*Class, what string) {
 	default:
 		sort.Slice(classes, func(i, j int) bool { return classes[i].Number < classes[j].Number })
 	}
+	reverse(classes)
+}
+
+func ClassMap(classes []*Class) map[int]*Class {
+	m := make(map[int]*Class)
+	for _, c := range classes {
+		m[c.Number] = c
+	}
+	return m
 }

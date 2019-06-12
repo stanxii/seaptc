@@ -1,11 +1,47 @@
 {{define "title"}}PTC: {{$.Data.Participant.Name}}{{end}}
 
 {{define "body"}}{{with .Data}}
-<h3>{{.Participant.Name}}</h3>
-<p>
-<table class="mb-3 table-sm">
-  <tr><th>Email</th><td>{{.Participant.Email}}</td></tr>
-  <tr><th>Classes</th><td>{{range $i, $c := .Participant.Classes}}{{if $i}}, {{end}}<a href="/dashboard/classes/{{$c}}">{{$c}}</a>{{end}}<td></tr>
-</table>
+
+{{with .Participant}}
+  <h3>{{.Name}}</h3>
+  <p>
+  <table class="mb-3 table-sm">
+    <tr><th>Reg #</th><td>{{.RegistrationNumber}}</td></tr>
+    <tr><th>Type</th><td>{{.Type}}{{with.StaffRole}} / {{.}}{{end}}{{with .StaffDescription}}: {{.}}{{end}}</td></tr>
+    <tr><th>Unit</th><td>{{.Unit}}</td></tr>
+    <tr><th>Council / District</th><td>{{.Council}} / {{.District}}</td></tr>
+    <tr><th>Email</th><td>{{with .Emails}}<a href="mailto:{{range $i, $e := .}}{{if $i}},{{end}}{{$e}}{{end}}">{{range $i, $e := .}}{{if $i}}, {{end}}{{$e}}{{end}}</a>{{end}}</td></tr>
+    <tr><th>OA Banquet</th><td>{{if .OABanquet}}yes{{else}}no{{end}}</td></tr>
+    {{if $.IsAdmin}}
+      <tr><th>Dietary Rest.</th><td>{{.DietaryRestrictions}}</td></tr>
+      <tr><th>Show QR Code</th><td>{{if .ShowQRCode}}yes{{else}}no{{end}}</td></tr>
+      <tr><th>Phone</th><td>{{.Phone}}</td></tr>
+      <tr><th>Address</th><td>{{.Address}}, {{.City}}, {{.State}} {{.Zip}}</td></tr>
+      <tr><th>BSA #</th><td>{{.BSANumber}}</td></tr>
+      <tr><th>Marketing</th><td>{{.Marketing}}</td></tr>
+      <tr><th>Scouting Years</th><td>{{.ScoutingYears}}</td></tr>
+    {{end}}
+  </table>
+{{end}}
+
+{{with .SessionClasses}}
+  <h5>Classes</h5>
+  <table class="table table-sm table-hover mb-4">
+    <thead>
+      <tr>
+        <th>Session</th>
+        <th>Class</th>
+      </tr>
+    <thead>
+    <tbody>
+      {{range .}}
+        <tr>
+          <td>{{add .Session 1}}</td>
+          <td>{{if .Number}}<a href="/dashboard/classes/{{.Number}}">{{.Number}}</a>: {{end}}{{if .Instructor}}<b>Instructor</b> {{end}}{{.Title}}</td>
+        </tr>
+      {{end}}
+    </tbody>
+  </table>
+{{end}}
 
 {{end}}{{end}}

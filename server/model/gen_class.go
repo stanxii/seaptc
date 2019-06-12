@@ -18,7 +18,7 @@ const (
 	Class_Length           = "length"
 	Class_Location         = "location"
 	Class_New              = "new"
-	Class_Number           = "number"
+	Class_Number           = "_"
 	Class_Programs         = "programs"
 	Class_Responsibility   = "responsibility"
 	Class_SpreadsheetRow   = "spreadsheetRow"

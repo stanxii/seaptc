@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"reflect"
 )
 
 func equalIntSlice(a, b []int) bool {
@@ -54,5 +55,26 @@ func hashValue(w io.Writer, v interface{}) {
 		if err != nil {
 			panic(fmt.Sprintf("cannot hash value of type %T", v))
 		}
+	}
+}
+
+func reverseSlice(s interface{}) {
+	size := reflect.ValueOf(s).Len()
+	swap := reflect.Swapper(s)
+	for i, j := 0, size-1; i < j; i, j = i+1, j-1 {
+		swap(i, j)
+	}
+}
+
+func noReverseSlice(s interface{}) {}
+
+func SortKeyReverse(key string) (string, func(s interface{})) {
+	switch {
+	case key == "":
+		return "", noReverseSlice
+	case key[0] == '-':
+		return key[1:], reverseSlice
+	default:
+		return key, noReverseSlice
 	}
 }

@@ -1,10 +1,34 @@
 indexes:
+- kind: "participant"
+  ancestor: yes
+  properties:
+  - name: "lastName"
+  - name: "firstName"
+  - name: "suffix"
+  - name: "staff"
+  - name: "staffRole"
+  - name: "youth"
+  - name: "council"
+  - name: "district"
+  - name: "unitType"
+  - name: "unitNumber"
 - kind: "class"
   ancestor: yes
   properties:
   - name: "capacity"
   - name: "length"
   - name: "location"
-  - name: "number"
   - name: "responsibility"
   - name: "title"
+- kind: participant
+  ancestor: yes
+  properties:
+  - name: classes
+- kind: participant
+  ancestor: yes
+  properties:
+  - name: importHash
+- kind: class
+  ancestor: yes
+  properties:
+  - name: importHash

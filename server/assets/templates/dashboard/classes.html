@@ -5,11 +5,13 @@
   <table class="table table-sm table-hover smaller-text mb-3">
    <thead>
       <tr>
-        <th>{{$.QP "Name" "sort" ""}}</th>
-        <th>{{$.QP "Location" "sort" "location"}}</th>
+        <th>{{$.Sort "Name" "-number"}}</th>
+        <th>{{$.Sort "Location" "location"}}</th>
         <th>Session</th>
-        {{if $.IsStaff}}<th>{{$.QP "Responsibility" "sort" "responsibility"}}</th>{{end}}
-        <th class="text-right">{{$.QP "Capacity" "sort" "capacity"}}</th>
+        {{if $.IsStaff}}<th>{{$.Sort "Responsibility" "responsibility"}}</th>{{end}}
+        <th class="text-right">{{$.Sort "Capacity" "capacity"}}</th>
+        <th class="text-right">{{$.Sort "Registered" "registered"}}</th>
+        <th class="text-right">{{$.Sort "Available" "available"}}</th>
       </tr>
     <tbody>
     {{range .Data.Classes -}}
@@ -19,6 +21,8 @@
         <td>{{add .Start 1}}{{if gt .Length 1}} &ndash; {{add .Start .Length}}{{end}}</td>
         {{if $.IsStaff}}<td class="text-nowrap">{{.Responsibility}}</td>{{end}}
         <td class="text-right">{{if lt 0 .Capacity}}{{.Capacity}}{{end}}</td>
+        <td class="text-right">{{call $.Data.Registered .}}</td>
+        <td class="text-right">{{call $.Data.Available .}}</td>
       </tr>
     {{end}}
     </tbody>

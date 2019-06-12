@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 )
@@ -45,7 +46,9 @@ type Participant struct {
 	NoShow            bool   `json:"noShow" datastore:"noShow,noindex" fields:""`
 
 	// Hash computed from Doubleknot registration fields.
-	ImportHash string `datastore:"importHash"`
+	ImportHash string `json:"-" datastore:"importHash"`
+
+	sortName string
 }
 
 // Type returns a short description of the participant's registration type.
@@ -107,9 +110,39 @@ func (p *Participant) LookupLunch(c *Conference) *Lunch {
 	return c.Lunches[0]
 }
 
-func SortParticipants(participants []*Participant, what string) {
-	switch what {
-	default:
-		sort.Slice(participants, func(i, j int) bool { return participants[i].ID < participants[j].ID })
+func (p *Participant) Emails() []string {
+	if !p.Youth || p.Email == p.RegisteredByEmail {
+		return []string{p.Email}
 	}
+	return []string{p.RegisteredByEmail, p.Email}
+}
+
+// Init initializes derived fields.
+func (p *Participant) Init() {
+	p.sortName = strings.ToLower(fmt.Sprintf("%s\n%s\n%s", p.LastName, p.FirstName, p.Suffix))
+}
+
+func SortParticipants(participants []*Participant, key string) {
+	key, reverse := SortKeyReverse(key)
+	switch key {
+	case "unit", "district", "council":
+		sort.Slice(participants, func(i, j int) bool {
+			if participants[i].Council != participants[j].Council {
+				return participants[i].Council < participants[j].Council
+			}
+			if participants[i].District != participants[j].District {
+				return participants[i].District < participants[j].District
+			}
+			if participants[i].UnitNumber != participants[j].UnitNumber {
+				return participants[i].UnitNumber < participants[j].UnitNumber
+			}
+			if participants[i].UnitType != participants[j].UnitType {
+				return participants[i].UnitType < participants[j].UnitType
+			}
+			return participants[i].sortName < participants[j].sortName
+		})
+	default:
+		sort.Slice(participants, func(i, j int) bool { return participants[i].sortName < participants[j].sortName })
+	}
+	reverse(participants)
 }
