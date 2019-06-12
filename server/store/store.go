@@ -101,3 +101,5 @@ func filterProperties(ps []datastore.Property, deleted map[string]bool) []datast
 	}
 	return ps[:i]
 }
+
+var conferenceEntityGroupKey = datastore.IDKey("conference", 1, nil)

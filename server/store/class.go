@@ -11,10 +11,14 @@ import (
 
 const classKind = "class"
 
-var classesEntityGroupKey = datastore.IDKey("classkind", 1, nil)
-
 func classKey(number int) *datastore.Key {
-	return datastore.IDKey(classKind, int64(number), classesEntityGroupKey)
+	return datastore.IDKey(classKind, int64(number), conferenceEntityGroupKey)
+}
+
+// classπImportHashLoginCode is as destination type for project(import hash)
+// queries.
+type classΠImportHash struct {
+	ImportHash string `datastore:"importHash"`
 }
 
 // xClass overrides datastore load and save on an model.Class.
@@ -54,19 +58,16 @@ func (store *Store) GetClass(ctx context.Context, number int) (*model.Class, err
 	return (*model.Class)(&c), err
 }
 
-var (
-	allClassesQuery = datastore.NewQuery(classKind).Ancestor(classesEntityGroupKey).Project(
-		model.Class_Length,
-		model.Class_Title,
-		model.Class_Capacity,
-		model.Class_Location,
-		model.Class_Responsibility)
-	allClassesFullQuery = datastore.NewQuery(classKind).Ancestor(classesEntityGroupKey)
-)
+var allClassesQuery = datastore.NewQuery(classKind).Ancestor(conferenceEntityGroupKey).Project(
+	model.Class_Length,
+	model.Class_Title,
+	model.Class_Capacity,
+	model.Class_Location,
+	model.Class_Responsibility)
 
-func (store *Store) getAllClasses(ctx context.Context, q *datastore.Query) ([]*model.Class, error) {
+func (store *Store) GetAllClasses(ctx context.Context) ([]*model.Class, error) {
 	var xclasses []*xClass
-	_, err := store.dsClient.GetAll(ctx, q, &xclasses)
+	_, err := store.dsClient.GetAll(ctx, allClassesQuery, &xclasses)
 	if err != nil {
 		return nil, err
 	}
@@ -77,12 +78,17 @@ func (store *Store) getAllClasses(ctx context.Context, q *datastore.Query) ([]*m
 	return classes, nil
 }
 
-func (store *Store) GetAllClasses(ctx context.Context) ([]*model.Class, error) {
-	return store.getAllClasses(ctx, allClassesQuery)
-}
-
 func (store *Store) GetAllClassesFull(ctx context.Context) ([]*model.Class, error) {
-	return store.getAllClasses(ctx, allClassesFullQuery)
+	var xclasses []*xClass
+	_, err := store.dsClient.GetAll(ctx, datastore.NewQuery(classKind).Ancestor(conferenceEntityGroupKey), &xclasses)
+	if err != nil {
+		return nil, err
+	}
+	classes := make([]*model.Class, len(xclasses))
+	for i, xc := range xclasses {
+		classes[i] = (*model.Class)(xc)
+	}
+	return classes, nil
 }
 
 func (store *Store) ImportClasses(ctx context.Context, classes []*model.Class) (int, error) {
@@ -102,36 +108,21 @@ func (store *Store) ImportClasses(ctx context.Context, classes []*model.Class) (
 
 		xhashes := make(map[int]string)
 
-		// Step 1: Get all keys
+		// Step 1: Query for import field hash values.
 
+		var hashValues []classΠImportHash
 		keys, err := store.dsClient.GetAll(ctx,
-			datastore.NewQuery(classKind).Ancestor(classesEntityGroupKey).KeysOnly(), nil)
-		if err != nil {
-			return err
-		}
-
-		for _, k := range keys {
-			xhashes[int(k.ID)] = ""
-		}
-
-		// Step 2: Query for import field hash values.
-
-		var hashValues []struct {
-			Hash string `datastore:"importHash"`
-		}
-
-		keys, err = store.dsClient.GetAll(ctx,
-			datastore.NewQuery(classKind).Ancestor(classesEntityGroupKey).Project(model.Class_ImportHash),
+			datastore.NewQuery(classKind).Ancestor(conferenceEntityGroupKey).Project(model.Class_ImportHash),
 			&hashValues)
 		if err != nil {
 			return err
 		}
 
 		for i, k := range keys {
-			xhashes[int(k.ID)] = hashValues[i].Hash
+			xhashes[int(k.ID)] = hashValues[i].ImportHash
 		}
 
-		// Step 3: For each class insert or update...
+		// Step 2: For each class insert or update...
 
 		var mutations []*datastore.Mutation
 
@@ -159,7 +150,7 @@ func (store *Store) ImportClasses(ctx context.Context, classes []*model.Class) (
 			mutations = append(mutations, datastore.NewUpdate(key, &xc))
 		}
 
-		// Step 4: Delete classes missing from the imported data.
+		// Step 3: Delete classes missing from the imported data.
 
 		for number := range xhashes {
 			mutations = append(mutations, datastore.NewDelete(classKey(number)))

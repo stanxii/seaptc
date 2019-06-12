@@ -1,6 +1,6 @@
 {{define "title"}}PTC: Fetch Registrations{{end}}
 {{define "body"}}{{with $.Data}}
-<h3>Conference</h3>
+<h3>Fetch Registrations</h3>
 
 {{if .Invalid}}<div class="alert alert-danger" role="alert"><strong>Eek!</strong> Fix the errors noted below and try again. </div>{{end}}
 {{if .Err}}<div class="alert alert-danger" role="alert">Error fetching registrations: {{.Err}}</div>{{end}}

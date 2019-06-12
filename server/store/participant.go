@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/seaptc/server/model"
 
@@ -13,8 +16,6 @@ import (
 )
 
 const participantKind = "participant"
-
-var participantsEntityGroupKey = datastore.IDKey("participantkind", 1, nil)
 
 // participantID returns a hash of unique particpant fields.
 func participantID(p *model.Participant) string {
@@ -26,12 +27,29 @@ func participantID(p *model.Participant) string {
 	buf = append(buf, p.Suffix...)
 	buf = append(buf, 0)
 	buf = append(buf, p.RegistrationNumber...)
+	if p.Youth {
+		buf = append(buf, 0, 1)
+	}
 	sum := md5.Sum(bytes.ToLower(buf))
 	return hex.EncodeToString(sum[:])
 }
 
 func participantKey(id string) *datastore.Key {
-	return datastore.NameKey(participantKind, id, participantsEntityGroupKey)
+	return datastore.NameKey(participantKind, id, conferenceEntityGroupKey)
+}
+
+// participantΠClass is used as the destination type for project(class)
+// queries.
+type participantΠClass struct {
+	// Array proparties are returned as single elements in project queries.
+	Class int `datastore:"classes"`
+}
+
+// participantπImportHashLoginCode is as destination type for project(import
+// hash, login code) queries.
+type participantΠImportHashLoginCode struct {
+	ImportHash string `datastore:"importHash"`
+	LoginCode  string `datastore:"loginCode"`
 }
 
 // xParticipant overrides datastore load and save on a model.Participant
@@ -64,31 +82,16 @@ func (store *Store) GetParticipant(ctx context.Context, id string) (*model.Parti
 	return (*model.Participant)(&xp), err
 }
 
-var (
-	allParticipantsQuery = datastore.NewQuery(participantKind).Ancestor(participantsEntityGroupKey).Project(
-		model.Participant_LastName,
-		model.Participant_FirstName,
-		model.Participant_Suffix,
-		model.Participant_Council,
-		model.Participant_District,
-		model.Participant_UnitNumber,
-		model.Participant_UnitType,
-		model.Participant_Staff,
-		model.Participant_StaffRole,
-		model.Participant_Youth,
-	)
-
-	allParticipantClassesQuery = datastore.NewQuery(participantKind).Ancestor(participantsEntityGroupKey).Project(
-		model.Participant_Classes,
-	)
-)
+func (store *Store) getParticpantClasses(ctx context.Context) ([]*datastore.Key, []participantΠClass, error) {
+	var classes []participantΠClass
+	// no ancestor in query for use of built-in index.
+	query := datastore.NewQuery(participantKind).Project(model.Participant_Classes)
+	keys, err := store.dsClient.GetAll(ctx, query, &classes)
+	return keys, classes, err
+}
 
 func (store *Store) GetClassParticipantCounts(ctx context.Context) (map[int]int, error) {
-	var classes []struct {
-		// Array proparties are returned as single elements in project queries.
-		Class int `datastore:"classes"`
-	}
-	_, err := store.dsClient.GetAll(ctx, allParticipantClassesQuery, &classes)
+	_, classes, err := store.getParticpantClasses(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +101,18 @@ func (store *Store) GetClassParticipantCounts(ctx context.Context) (map[int]int,
 	}
 	return result, nil
 }
+
+var allParticipantsQuery = datastore.NewQuery(participantKind).Ancestor(conferenceEntityGroupKey).Project(
+	model.Participant_LastName,
+	model.Participant_FirstName,
+	model.Participant_Suffix,
+	model.Participant_Council,
+	model.Participant_District,
+	model.Participant_UnitNumber,
+	model.Participant_UnitType,
+	model.Participant_Staff,
+	model.Participant_StaffRole,
+	model.Participant_Youth)
 
 func (store *Store) GetAllParticipants(ctx context.Context) ([]*model.Participant, error) {
 
@@ -109,11 +124,7 @@ func (store *Store) GetAllParticipants(ctx context.Context) ([]*model.Participan
 		return nil, err
 	}
 
-	var classes []struct {
-		// Array proparties are returned as single elements in project queries.
-		Class int `datastore:"classes"`
-	}
-	keys, err := store.dsClient.GetAll(ctx, allParticipantClassesQuery, &classes)
+	keys, classes, err := store.getParticpantClasses(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +145,7 @@ func (store *Store) GetAllParticipants(ctx context.Context) ([]*model.Participan
 
 func (store *Store) GetClassParticipants(ctx context.Context, classNumber int) ([]*model.Participant, error) {
 	keys, err := store.dsClient.GetAll(ctx, datastore.NewQuery(participantKind).
-		Ancestor(participantsEntityGroupKey).
+		Ancestor(conferenceEntityGroupKey).
 		Filter(model.Participant_Classes+"=", classNumber).
 		KeysOnly(), nil)
 	if err != nil {
@@ -160,6 +171,23 @@ func (store *Store) GetClassParticipants(ctx context.Context, classNumber int) (
 	return participants[:i], nil
 }
 
+func getUniqueLoginCode(codes map[string]bool) (string, error) {
+	var b [4]byte
+	for i := 0; i < 10000; i++ {
+		if _, err := rand.Read(b[:]); err != nil {
+			return "", err
+		}
+		n := int(b[0]) | int(b[1])<<8 | int(b[2])<<16 | int(b[3])<<24
+		code := strconv.Itoa(n%899999 + 100000)
+		if codes[code] {
+			continue
+		}
+		codes[code] = true
+		return code, nil
+	}
+	return "", errors.New("could not assign login code")
+}
+
 func (store *Store) ImportParticipants(ctx context.Context, participants []*model.Participant) (int, error) {
 
 	var mutationCount int
@@ -167,37 +195,24 @@ func (store *Store) ImportParticipants(ctx context.Context, participants []*mode
 	_, err := store.dsClient.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
 
 		xhashes := make(map[string]string)
+		codes := make(map[string]bool)
 
-		// Step 1: Get all keys
+		// Step 1: Query for import field hash values and login codes
 
+		var hashCodeValues []participantΠImportHashLoginCode
 		keys, err := store.dsClient.GetAll(ctx,
-			datastore.NewQuery(participantKind).Ancestor(participantsEntityGroupKey).KeysOnly(), nil)
-		if err != nil {
-			return err
-		}
-
-		for _, k := range keys {
-			xhashes[k.Name] = ""
-		}
-
-		// Step 2: Query for import field hash values.
-
-		var hashValues []struct {
-			Hash string `datastore:"importHash"`
-		}
-
-		keys, err = store.dsClient.GetAll(ctx,
-			datastore.NewQuery(participantKind).Ancestor(participantsEntityGroupKey).Project(model.Participant_ImportHash),
-			&hashValues)
+			datastore.NewQuery(participantKind).Ancestor(conferenceEntityGroupKey).Project(model.Participant_ImportHash, model.Participant_LoginCode),
+			&hashCodeValues)
 		if err != nil {
 			return err
 		}
 
 		for i, k := range keys {
-			xhashes[k.Name] = hashValues[i].Hash
+			xhashes[k.Name] = hashCodeValues[i].ImportHash
+			codes[hashCodeValues[i].LoginCode] = true
 		}
 
-		// Step 3: For each particpant either insert or update...
+		// Step 3: For each participant either insert or update...
 
 		var mutations []*datastore.Mutation
 
@@ -210,6 +225,10 @@ func (store *Store) ImportParticipants(ctx context.Context, participants []*mode
 			if !ok {
 				// Participant not in datastore, insert.
 				p.ImportHash = hash
+				p.LoginCode, err = getUniqueLoginCode(codes)
+				if err != nil {
+					return err
+				}
 				mutations = append(mutations, datastore.NewInsert(key, (*xParticipant)(p)))
 				continue
 			}

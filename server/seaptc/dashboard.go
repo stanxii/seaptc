@@ -69,7 +69,40 @@ func (svc *dashboardService) Serve_dashboard_(rc *requestContext) error {
 }
 
 func (svc *dashboardService) Serve_dashboard(rc *requestContext) error {
-	return rc.respond(svc.templates.Index, http.StatusOK, nil)
+	participants, err := svc.store.GetAllParticipants(rc.context())
+	if err != nil {
+		return err
+	}
+
+	data := struct {
+		Councils  map[string]int
+		Districts map[string]map[string]int
+		Types     map[string]int
+		Total     int
+	}{
+		make(map[string]int),
+		make(map[string]map[string]int),
+		make(map[string]int),
+		0,
+	}
+
+	for _, p := range participants {
+		data.Total++
+		data.Councils[p.Council]++
+		data.Types[p.Type()]++
+		if p.Council == "Chief Seattle" {
+			d := data.Districts[p.District]
+			if d == nil {
+				d = make(map[string]int)
+				data.Districts[p.District] = d
+			}
+			unitName := p.Unit()
+			d[unitName]++
+			d[""]++
+		}
+	}
+
+	return rc.respond(svc.templates.Index, http.StatusOK, &data)
 }
 
 func (svc *dashboardService) Serve_dashboard_classes(rc *requestContext) error {
@@ -181,8 +214,8 @@ func (svc *dashboardService) Serve_dashboard_participants(rc *requestContext) er
 		return err
 	}
 	classMap := model.ClassMap(classes)
-
 	model.SortParticipants(participants, rc.request.FormValue("sort"))
+
 	var data = struct {
 		Participants   []*model.Participant
 		SessionClasses interface{}

@@ -1,17 +1,4 @@
 indexes:
-- kind: "participant"
-  ancestor: yes
-  properties:
-  - name: "lastName"
-  - name: "firstName"
-  - name: "suffix"
-  - name: "staff"
-  - name: "staffRole"
-  - name: "youth"
-  - name: "council"
-  - name: "district"
-  - name: "unitType"
-  - name: "unitNumber"
 - kind: "class"
   ancestor: yes
   properties:
@@ -20,15 +7,25 @@ indexes:
   - name: "location"
   - name: "responsibility"
   - name: "title"
-- kind: participant
+- kind: "participant"
   ancestor: yes
   properties:
-  - name: classes
-- kind: participant
+  - name: "council"
+  - name: "district"
+  - name: "firstName"
+  - name: "lastName"
+  - name: "staff"
+  - name: "staffRole"
+  - name: "suffix"
+  - name: "unitNumber"
+  - name: "unitType"
+  - name: "youth"
+- kind: "class"
   ancestor: yes
   properties:
-  - name: importHash
-- kind: class
+  - name: "importHash"
+- kind: "participant"
   ancestor: yes
   properties:
-  - name: importHash
+  - name: "importHash"
+  - name: "loginCode"

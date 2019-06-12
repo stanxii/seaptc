@@ -7,10 +7,8 @@ import (
 	"github.com/seaptc/server/model"
 )
 
-const miscKind = "misc"
-
-func miscKey(what string) *datastore.Key {
-	return datastore.NameKey(miscKind, what, nil)
+func miscKey(kind string) *datastore.Key {
+	return datastore.IDKey(kind, 1, conferenceEntityGroupKey)
 }
 
 func (store *Store) GetAppConfig(ctx context.Context) (*model.AppConfig, error) {

@@ -26,7 +26,7 @@ func (page *dsPage) LoadKey(k *datastore.Key) error {
 }
 
 func pageKey(path string) *datastore.Key {
-	return datastore.NameKey(pageKind, path, nil)
+	return datastore.NameKey(pageKind, path, conferenceEntityGroupKey)
 }
 
 func (store *Store) SetPage(ctx context.Context, page *model.Page) error {
@@ -41,6 +41,7 @@ func (store *Store) GetPage(ctx context.Context, path string) (*model.Page, erro
 
 func (store *Store) GetPageHashes(ctx context.Context) (map[string]string, error) {
 	var pages []*dsPage
+	// no ancestor in query for use of built-in index.
 	_, err := store.dsClient.GetAll(ctx, datastore.NewQuery(pageKind).Project(model.Page_Hash), &pages)
 	if err != nil {
 		return nil, err

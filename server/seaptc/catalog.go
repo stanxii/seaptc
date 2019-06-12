@@ -178,7 +178,7 @@ func (svc *catalogService) buildCatalog(ctx context.Context) (int, int, error) {
 		return 0, 0, err
 	}
 
-	model.SortClasses(classes, model.Class_Number)
+	model.SortClasses(classes, "number")
 	catalogSuggestedSchedules := createCatalogSuggestedSchedules(classes, suggestedSchedules)
 
 	var data = struct {

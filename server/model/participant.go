@@ -11,42 +11,45 @@ import (
 type Participant struct {
 	ID string `json:"id" datastore:"-" fields:""`
 
-	RegistrationNumber  string `json:"registrationNumber" datastore:"registrationNumber,noindex" fields:"Import"`
-	RegisteredByName    string `json:"registeredByName" datastore:"registeredByName,noindex" fields:"Import"`
-	RegisteredByEmail   string `json:"registeredByEmail" datastore:"registeredByEmail,noindex" fields:"Import"`
-	RegisteredByPhone   string `json:"registeredByPhone" datastore:"registeredByPhone,noindex" fields:"Import"`
-	FirstName           string `json:"firstName" datastore:"firstName" fields:"Import"`
-	LastName            string `json:"lastName" datastore:"lastName" fields:"Import"`
-	Nickname            string `json:"nickname" datastore:"nickname,noindex" fields:"Import"`
+	RegistrationNumber  string `json:"registrationNumber" datastore:"regNumber,noindex" fields:"Import"`
+	RegisteredByName    string `json:"registeredByName" datastore:"regByName,noindex" fields:"Import"`
+	RegisteredByEmail   string `json:"registeredByEmail" datastore:"regByEmail,noindex" fields:"Import"`
+	RegisteredByPhone   string `json:"registeredByPhone" datastore:"regByPhone,noindex" fields:"Import"`
+	FirstName           string `json:"firstName" datastore:"firstName" fields:"Import,Print"`
+	LastName            string `json:"lastName" datastore:"lastName" fields:"Import,Print"`
+	Nickname            string `json:"nickname" datastore:"nickname,noindex,omitempty" fields:"Import,Print"`
 	Suffix              string `json:"suffix" datastore:"suffix" fields:"Import"`
-	Staff               bool   `json:"staff" datastore:"staff" fields:"Import"`
+	Staff               bool   `json:"staff" datastore:"staff" fields:"Import,Print"`
 	Youth               bool   `json:"youth" datastore:"youth" fields:"Import"`
-	Phone               string `json:"phone" datastore:"phone,noindex" fields:"Import"`
-	Email               string `json:"email" datastore:"email,noindex" fields:"Import"`
-	Address             string `json:"address" datastore:"address,noindex" fields:"Import"`
-	City                string `json:"city" datastore:"city,noindex" fields:"Import"`
-	State               string `json:"state" datastore:"state,noindex" fields:"Import"`
-	Zip                 string `json:"zip" datastore:"zip,noindex" fields:"Import"`
-	StaffRole           string `json:"staffRole" datastore:"staffRole" fields:"Import"` // Instructor, Support, Midway
-	Council             string `json:"council" datastore:"council" fields:"Import"`
-	District            string `json:"district" datastore:"district" fields:"Import"`
-	UnitType            string `json:"unitType" datastore:"unitType" fields:"Import"`
-	UnitNumber          string `json:"unitNumber" datastore:"unitNumber" fields:"Import"`
+	Phone               string `json:"phone" datastore:"phone,noindex,omitempty" fields:"Import"`
+	Email               string `json:"email" datastore:"email" fields:"Import"`
+	Address             string `json:"address" datastore:"address,noindex,omitempty" fields:"Import"`
+	City                string `json:"city" datastore:"city,noindex,omitempty" fields:"Import"`
+	State               string `json:"state" datastore:"state,noindex,omitempty" fields:"Import"`
+	Zip                 string `json:"zip" datastore:"zip,noindex,omitempty" fields:"Import"`
+	StaffRole           string `json:"staffRole" datastore:"staffRole" fields:"Import,Print"` // Instructor, Support, Midway
+	Council             string `json:"council" datastore:"council" fields:"Import,Print"`
+	District            string `json:"district" datastore:"district" fields:"Import,Print"`
+	UnitType            string `json:"unitType" datastore:"unitType" fields:"Import,Print"`
+	UnitNumber          string `json:"unitNumber" datastore:"unitNumber" fields:"Import,Print"`
 	DietaryRestrictions string `json:"dietaryRestrictions" datastore:"dietaryRestrictions" fields:"Import"`
-	Marketing           string `json:"marketing" datastore:"marketing,noindex" fields:"Import"`
-	ScoutingYears       string `json:"scoutingYears" datastore:"scoutingYears,noindex" fields:"Import"`
-	ShowQRCode          bool   `json:"showQRCode" datastore:"showQRCode,noindex" fields:"Import"`
-	BSANumber           string `json:"bsaNumber" datastore:"bsaNumber,noindex" fields:"Import"`
-	Classes             []int  `json:"classes" datastore:"classes" fields:"Import"`
+	Marketing           string `json:"marketing" datastore:"marketing,noindex,omitempty" fields:"Import"`
+	ScoutingYears       string `json:"scoutingYears" datastore:"scoutingYears,noindex,omitempty" fields:"Import"`
+	ShowQRCode          bool   `json:"showQRCode" datastore:"showQRCode,noindex,omitempty" fields:"Import"`
+	BSANumber           string `json:"bsaNumber" datastore:"bsaNumber,noindex,omitempty" fields:"Import"`
+	Classes             []int  `json:"classes" datastore:"classes" fields:"Import,Print"`
 	StaffDescription    string `json:"staffDescription" datastore:"staffDescription" fields:"Import"` // instructor classes, midway org
-	OABanquet           bool   `json:"oaBanquet" datastore:"oaBanquet" fields:"Import"`
+	OABanquet           bool   `json:"oaBanquet" datastore:"oaBanquet" fields:"Import,Print"`
 
-	InstructorClasses []int  `json:"instructorClasses" datastore:"instructorClasses,noindex"`
-	Notes             string `json:"notes" datastore:"notes,noindex" fields:""`
-	NoShow            bool   `json:"noShow" datastore:"noShow,noindex" fields:""`
+	InstructorClasses []int  `json:"instructorClasses" datastore:"instructorClasses,noindex" fields:"Print"`
+	Notes             string `json:"notes" datastore:"notes,noindex,omitempty" fields:""`
+	NoShow            bool   `json:"noShow" datastore:"noShow,noindex,omitempty" fields:""`
 
 	// Hash computed from Doubleknot registration fields.
 	ImportHash string `json:"-" datastore:"importHash"`
+
+	// Unique seven digit code assigned during import.
+	LoginCode string `json:"-" datastore:"loginCode"`
 
 	sortName string
 }

@@ -178,7 +178,9 @@ func main() {
 				printer.Fprint(&buf, fset, f.Type)
 
 				field := &fieldInfo{Go: name.Name, Store: storeName, Type: buf.String()}
-				ti.Fields = append(ti.Fields, field)
+				if field.Store != "_" && field.Store != "" {
+					ti.Fields = append(ti.Fields, field)
+				}
 				if tag := tag.Get("fields"); tag != "" {
 					for _, set := range strings.Split(tag, ",") {
 						fs := ti.FieldSets[set]
