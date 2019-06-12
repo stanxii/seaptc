@@ -284,7 +284,12 @@ func (svc *dashboardService) Serve_dashboard_fetch__registrations(rc *requestCon
 		return rc.respond(svc.templates.FetchRegistrations, http.StatusOK, &data)
 	}
 
-	participants, err := dk.FetchCSV(rc.context(), url)
+	header := make(http.Header)
+	for _, key := range []string{"Accept", "Accept-Language", "User-Agent"} {
+		header[key] = rc.request.Header[key]
+	}
+
+	participants, err := dk.FetchCSV(rc.context(), url, header)
 	if err != nil {
 		data.Err = err
 		return rc.respond(svc.templates.FetchRegistrations, http.StatusOK, &data)

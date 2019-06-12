@@ -270,13 +270,15 @@ func cleanParticipant(p *participant) {
 	}
 }
 
-func FetchCSV(ctx context.Context, url string) ([]*model.Participant, error) {
+func FetchCSV(ctx context.Context, url string, header http.Header) ([]*model.Participant, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 	req = req.WithContext(ctx)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36")
+	for k, v := range header {
+		req.Header[k] = v
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
