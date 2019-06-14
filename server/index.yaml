@@ -20,6 +20,7 @@ indexes:
   - name: "unitNumber"
   - name: "unitType"
   - name: "youth"
+  - name: "printForm"
 - kind: "class"
   ancestor: yes
   properties:

@@ -8,7 +8,7 @@
   <tr><th>Session</th><td>{{add .Class.Start 1}}{{if gt .Class.Length 1}} &ndash; {{add .Class.End 1}}{{end}}</td></tr>
   <tr><th>Location / Capacity</th><td>{{with .Class.Location}}{{.}}{{else}}Location not assigned{{end}} / {{.Class.Capacity}}</td></tr>
   {{with .Lunch}}
-    <tr><th>Lunch</th><td>{{.Name}} @ {{.Location}}</td></tr>
+    <tr><th>Lunch</th><td>{{.Name}}{{with .Location}} @ {{.}}{{end}}</td></tr>
   {{end}}
   {{if  and $.IsStaff .InstructorURL}}
     <tr><th>Instructor link</th><td><a href="{{.InstructorURL}}">{{.InstructorURL}}</a></td></tr>
@@ -25,7 +25,7 @@
   <table class="table table-sm table-hover">
     <thead>
       <tr>
-        <th>{{$.Sort "Name" "-name"}}</th>
+        <th>{{$.Sort "Name" "!name"}}</th>
         <th>{{$.Sort "Type" "type"}}</th>
         <th>{{$.Sort "Council" "unit"}}</th>
         <th>{{$.Sort "District" "unit"}}</th>

@@ -28,6 +28,7 @@ const (
 	Participant_Notes               = "notes"
 	Participant_OABanquet           = "oaBanquet"
 	Participant_Phone               = "phone"
+	Participant_PrintForm           = "printForm"
 	Participant_RegisteredByEmail   = "regByEmail"
 	Participant_RegisteredByName    = "regByName"
 	Participant_RegisteredByPhone   = "regByPhone"
@@ -147,49 +148,34 @@ func (x *Participant) HashImportFields() string {
 
 func (x *Participant) CopyPrintFieldsTo(y *Participant) {
 	y.Classes = x.Classes
-	y.Council = x.Council
-	y.District = x.District
 	y.FirstName = x.FirstName
 	y.InstructorClasses = x.InstructorClasses
 	y.LastName = x.LastName
 	y.Nickname = x.Nickname
 	y.OABanquet = x.OABanquet
-	y.Staff = x.Staff
-	y.StaffRole = x.StaffRole
-	y.UnitNumber = x.UnitNumber
-	y.UnitType = x.UnitType
+	y.Suffix = x.Suffix
 }
 
 func (x *Participant) EqualPrintFields(y *Participant) bool {
 	return equalIntSlice(x.Classes, y.Classes) &&
-		x.Council == y.Council &&
-		x.District == y.District &&
 		x.FirstName == y.FirstName &&
 		equalIntSlice(x.InstructorClasses, y.InstructorClasses) &&
 		x.LastName == y.LastName &&
 		x.Nickname == y.Nickname &&
 		x.OABanquet == y.OABanquet &&
-		x.Staff == y.Staff &&
-		x.StaffRole == y.StaffRole &&
-		x.UnitNumber == y.UnitNumber &&
-		x.UnitType == y.UnitType
+		x.Suffix == y.Suffix
 }
 
 func (x *Participant) HashPrintFields() string {
 	h := md5.New()
-	hashValue(h, "ab9e1f2c9d8274873cd01d59cdb4a1e0")
+	hashValue(h, "8cd4e82041fc6e83b23ab0040e0e5ba4")
 	hashValue(h, x.Classes)
-	hashValue(h, x.Council)
-	hashValue(h, x.District)
 	hashValue(h, x.FirstName)
 	hashValue(h, x.InstructorClasses)
 	hashValue(h, x.LastName)
 	hashValue(h, x.Nickname)
 	hashValue(h, x.OABanquet)
-	hashValue(h, x.Staff)
-	hashValue(h, x.StaffRole)
-	hashValue(h, x.UnitNumber)
-	hashValue(h, x.UnitType)
+	hashValue(h, x.Suffix)
 	sum := h.Sum(nil)
 	return hex.EncodeToString(sum[:])
 }

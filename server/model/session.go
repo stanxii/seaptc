@@ -2,6 +2,16 @@ package model
 
 import "log"
 
+type ClassMap map[int]*Class
+
+func NewClassMap(classes []*Class) ClassMap {
+	m := make(map[int]*Class)
+	for _, c := range classes {
+		m[c.Number] = c
+	}
+	return m
+}
+
 type SessionConflict struct {
 	*Class
 	Instructor bool
@@ -10,13 +20,14 @@ type SessionConflict struct {
 type SessionClass struct {
 	*Class
 	Session    int
+	Part       int
 	Instructor bool
 	Conflicts  []SessionConflict
 }
 
 var noClass = &Class{Title: "No Class", Length: 1}
 
-func ParticipantSessionClasses(p *Participant, classes map[int]*Class) []*SessionClass {
+func (classes ClassMap) ParticipantSessionClasses(p *Participant) []*SessionClass {
 	sessionClasses := make([]*SessionClass, NumSession)
 	for i := range sessionClasses {
 		sessionClasses[i] = &SessionClass{Session: i, Class: noClass}
@@ -39,6 +50,7 @@ func ParticipantSessionClasses(p *Participant, classes map[int]*Class) []*Sessio
 				}
 				sc.Class = c
 				sc.Instructor = instructor
+				sc.Part = i - start + 1
 			}
 		}
 	}

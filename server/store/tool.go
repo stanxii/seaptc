@@ -56,6 +56,14 @@ func main() {
 		if err := s.SetConference(ctx, &conf); err != nil {
 			log.Fatal(err)
 		}
+	case "update-classes":
+		if err := s.UpdateClasses(ctx); err != nil {
+			log.Fatal(err)
+		}
+	case "update-participants":
+		if err := s.UpdateParticipants(ctx); err != nil {
+			log.Fatal(err)
+		}
 	default:
 		log.Fatalf("Unknown command %q, commands are config-get, config-set", flag.Arg(0))
 	}

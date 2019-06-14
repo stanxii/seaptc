@@ -53,17 +53,35 @@ func (tc *templateContext) Sort(text string, key string) (htemp.HTML, error) {
 	if key == "" {
 		return "", errors.New("sort key cannot be empty string")
 	}
-	request := tc.rc.request
-	if request.FormValue("sort") == key {
-		if key[0] == '-' {
-			key = key[1:]
-		} else {
-			key = "-" + key
-		}
+	var isDefault bool
+	if key[0] == '!' {
+		isDefault = true
+		key = key[1:]
 	}
-	qp := request.URL.Query()
-	qp.Set("sort", key)
-	ucopy := *request.URL
+
+	qp := tc.rc.request.URL.Query()
+	sort := qp.Get("sort")
+	reverse := "-"
+	if isDefault && sort == "" {
+		sort = key
+	} else if len(sort) > 0 && sort[0] == '-' {
+		reverse = ""
+		sort = sort[1:]
+	}
+
+	if sort == key {
+		sort = reverse + key
+	} else {
+		sort = key
+	}
+
+	if isDefault && sort == key {
+		qp.Del("sort")
+	} else {
+		qp.Set("sort", sort)
+	}
+
+	ucopy := *tc.rc.request.URL
 	ucopy.RawQuery = qp.Encode()
 	return htemp.HTML(`<a href="` + ucopy.RequestURI() + `">` + htemp.HTMLEscapeString(text) + `</a>`), nil
 }
@@ -74,6 +92,9 @@ func newTemplateManager(assetDir string) *templates.Manager {
 
 	return &templates.Manager{
 		HTMLFuncs: map[string]interface{}{
+			"args": func(values ...interface{}) []interface{} {
+				return values
+			},
 			"add": func(values ...int) int {
 				result := 0
 				for _, v := range values {

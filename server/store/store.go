@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -103,3 +104,67 @@ func filterProperties(ps []datastore.Property, deleted map[string]bool) []datast
 }
 
 var conferenceEntityGroupKey = datastore.IDKey("conference", 1, nil)
+
+var (
+	errNoUpdate = errors.New("no update")
+	errorType   = reflect.TypeOf((*error)(nil)).Elem()
+)
+
+func (store *Store) updateEntities(ctx context.Context, keys []*datastore.Key, update interface{}) (int, error) {
+	updatev := reflect.ValueOf(update)
+	t := updatev.Type()
+	if t.Kind() != reflect.Func ||
+		t.NumIn() != 1 ||
+		t.NumOut() != 1 ||
+		t.Out(0) != errorType ||
+		t.In(0).Kind() != reflect.Ptr {
+		return 0, errors.New("update func not f(v *Type) error")
+	}
+
+	var mutationCount int
+
+	for len(keys) > 0 {
+		n := len(keys)
+		if n > 50 {
+			n = 50
+		}
+		var txMutationCount int
+		_, err := store.dsClient.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
+			dst := reflect.MakeSlice(reflect.SliceOf(t.In(0)), n, n)
+			err := noEntityOK(tx.GetMulti(keys[:n], dst.Interface()))
+			if err != nil {
+				return err
+			}
+			var mutations []*datastore.Mutation
+			for i := 0; i < n; i++ {
+				elem := dst.Index(i)
+				if elem.IsNil() {
+					continue
+				}
+				out := updatev.Call([]reflect.Value{elem})
+				err, _ = out[0].Interface().(error)
+				if err == errNoUpdate {
+					continue
+				}
+				if err != nil {
+					return err
+				}
+				mutations = append(mutations, datastore.NewUpdate(keys[i], elem.Interface()))
+			}
+			txMutationCount = len(mutations)
+			if txMutationCount != 0 {
+				_, err = tx.Mutate(mutations...)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return mutationCount, err
+		}
+		mutationCount += txMutationCount
+		keys = keys[n:]
+	}
+	return mutationCount, nil
+}

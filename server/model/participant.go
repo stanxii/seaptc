@@ -18,8 +18,8 @@ type Participant struct {
 	FirstName           string `json:"firstName" datastore:"firstName" fields:"Import,Print"`
 	LastName            string `json:"lastName" datastore:"lastName" fields:"Import,Print"`
 	Nickname            string `json:"nickname" datastore:"nickname,noindex,omitempty" fields:"Import,Print"`
-	Suffix              string `json:"suffix" datastore:"suffix" fields:"Import"`
-	Staff               bool   `json:"staff" datastore:"staff" fields:"Import,Print"`
+	Suffix              string `json:"suffix" datastore:"suffix" fields:"Import,Print"`
+	Staff               bool   `json:"staff" datastore:"staff" fields:"Import"`
 	Youth               bool   `json:"youth" datastore:"youth" fields:"Import"`
 	Phone               string `json:"phone" datastore:"phone,noindex,omitempty" fields:"Import"`
 	Email               string `json:"email" datastore:"email" fields:"Import"`
@@ -27,11 +27,11 @@ type Participant struct {
 	City                string `json:"city" datastore:"city,noindex,omitempty" fields:"Import"`
 	State               string `json:"state" datastore:"state,noindex,omitempty" fields:"Import"`
 	Zip                 string `json:"zip" datastore:"zip,noindex,omitempty" fields:"Import"`
-	StaffRole           string `json:"staffRole" datastore:"staffRole" fields:"Import,Print"` // Instructor, Support, Midway
-	Council             string `json:"council" datastore:"council" fields:"Import,Print"`
-	District            string `json:"district" datastore:"district" fields:"Import,Print"`
-	UnitType            string `json:"unitType" datastore:"unitType" fields:"Import,Print"`
-	UnitNumber          string `json:"unitNumber" datastore:"unitNumber" fields:"Import,Print"`
+	StaffRole           string `json:"staffRole" datastore:"staffRole" fields:"Import"` // Instructor, Support, Midway
+	Council             string `json:"council" datastore:"council" fields:"Import"`
+	District            string `json:"district" datastore:"district" fields:"Import"`
+	UnitType            string `json:"unitType" datastore:"unitType" fields:"Import"`
+	UnitNumber          string `json:"unitNumber" datastore:"unitNumber" fields:"Import"`
 	DietaryRestrictions string `json:"dietaryRestrictions" datastore:"dietaryRestrictions" fields:"Import"`
 	Marketing           string `json:"marketing" datastore:"marketing,noindex,omitempty" fields:"Import"`
 	ScoutingYears       string `json:"scoutingYears" datastore:"scoutingYears,noindex,omitempty" fields:"Import"`
@@ -47,6 +47,9 @@ type Participant struct {
 
 	// Hash computed from Doubleknot registration fields.
 	ImportHash string `json:"-" datastore:"importHash"`
+
+	// Set to true when a Print field changes.
+	PrintForm bool `json:"-" datastore:"printForm"`
 
 	// Unique seven digit code assigned during import.
 	LoginCode string `json:"-" datastore:"loginCode"`
@@ -96,23 +99,6 @@ func (p *Participant) Firsts() string {
 	return n + "'s"
 }
 
-func (p *Participant) LookupLunch(c *Conference) *Lunch {
-	c.setupLunch()
-	// XXX check instructor classes
-	for _, class := range p.Classes {
-		if l, ok := c.lunch.byClass[class]; ok {
-			return l
-		}
-	}
-	if l, ok := c.lunch.byUnitType[p.UnitType]; ok {
-		return l
-	}
-	if len(c.Lunches) == 0 {
-		return &Lunch{Seating: 1, Location: "TBD"}
-	}
-	return c.Lunches[0]
-}
-
 func (p *Participant) Emails() []string {
 	if !p.Youth || p.Email == p.RegisteredByEmail {
 		return []string{p.Email}
@@ -123,6 +109,10 @@ func (p *Participant) Emails() []string {
 // Init initializes derived fields.
 func (p *Participant) Init() {
 	p.sortName = strings.ToLower(fmt.Sprintf("%s\n%s\n%s", p.LastName, p.FirstName, p.Suffix))
+}
+
+func DefaultParticipantLess(a, b *Participant) bool {
+	return a.sortName < b.sortName
 }
 
 func SortParticipants(participants []*Participant, key string) {

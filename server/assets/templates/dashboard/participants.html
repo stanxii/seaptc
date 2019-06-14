@@ -5,7 +5,7 @@
   <thead>
     <tr>
       {{if .IsStaff}}
-        <th>{{$.Sort "Name" "-name"}}</th>
+        <th>{{$.Sort "Name" "!name"}}</th>
       {{end}}
       <th>{{$.Sort "Type" "type"}}</th>
       <th>{{$.Sort "Council" "unit"}}</th>

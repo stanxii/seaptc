@@ -167,3 +167,13 @@ func (store *Store) ImportClasses(ctx context.Context, classes []*model.Class) (
 
 	return mutationCount, err
 }
+
+// UpdateParticipants gets and puts all entities. Use when adding new indexed fields to the entity.
+func (store *Store) UpdateClasses(ctx context.Context) error {
+	keys, err := store.dsClient.GetAll(ctx, datastore.NewQuery(classKind).Ancestor(conferenceEntityGroupKey).KeysOnly(), nil)
+	if err != nil {
+		return err
+	}
+	_, err = store.updateEntities(ctx, keys, func(xc *xClass) error { return nil })
+	return err
+}

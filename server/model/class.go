@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
 //go:generate go run gogen.go -input class.go -output gen_class.go Class
@@ -72,6 +73,18 @@ func (c *Class) ProgramDescriptions(reverse bool) []*ProgramDescription {
 	return programDescriptionsForMask(c.Programs, reverse)
 }
 
+func (c *Class) ShortTitle() string {
+	if i := strings.Index(c.Title, " - "); i > 0 {
+		return c.Title[:i]
+	}
+	if strings.HasSuffix(c.Title, ")") {
+		if i := strings.Index(c.Title, " ("); i > 0 {
+			return c.Title[:i]
+		}
+	}
+	return c.Title
+}
+
 func IsValidClassNumber(number int) bool {
 	return 100 <= number && number < (NumSession+1)*100
 }
@@ -80,21 +93,40 @@ func SortClasses(classes []*Class, key string) {
 	key, reverse := SortKeyReverse(key)
 	switch key {
 	case Class_Location:
-		sort.Slice(classes, func(i, j int) bool { return classes[i].Location < classes[j].Location })
+		sort.Slice(classes, func(i, j int) bool {
+			switch {
+			case classes[i].Location < classes[j].Location:
+				return true
+			case classes[i].Location > classes[j].Location:
+				return false
+			default:
+				return classes[i].Number < classes[j].Number
+			}
+		})
 	case Class_Responsibility:
-		sort.Slice(classes, func(i, j int) bool { return classes[i].Responsibility < classes[j].Responsibility })
+		sort.Slice(classes, func(i, j int) bool {
+			switch {
+			case classes[i].Responsibility < classes[j].Responsibility:
+				return true
+			case classes[i].Responsibility > classes[j].Responsibility:
+				return false
+			default:
+				return classes[i].Number < classes[j].Number
+			}
+		})
 	case Class_Capacity:
-		sort.Slice(classes, func(i, j int) bool { return classes[i].Capacity < classes[j].Capacity })
+		sort.Slice(classes, func(i, j int) bool {
+			switch {
+			case classes[i].Capacity < classes[j].Capacity:
+				return true
+			case classes[i].Capacity > classes[j].Capacity:
+				return false
+			default:
+				return classes[i].Number < classes[j].Number
+			}
+		})
 	default:
 		sort.Slice(classes, func(i, j int) bool { return classes[i].Number < classes[j].Number })
 	}
 	reverse(classes)
-}
-
-func ClassMap(classes []*Class) map[int]*Class {
-	m := make(map[int]*Class)
-	for _, c := range classes {
-		m[c.Number] = c
-	}
-	return m
 }

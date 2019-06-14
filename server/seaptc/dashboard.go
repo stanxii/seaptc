@@ -12,6 +12,7 @@ import (
 
 	"github.com/garyburd/web/httperror"
 	"github.com/garyburd/web/templates"
+	"rsc.io/qr"
 
 	"github.com/seaptc/server/dk"
 	"github.com/seaptc/server/model"
@@ -31,6 +32,8 @@ type dashboardService struct {
 		Admin              *templates.Template `html:"dashboard/admin.html dashboard/root.html common.html"`
 		Conference         *templates.Template `html:"dashboard/conference.html dashboard/root.html common.html"`
 		FetchRegistrations *templates.Template `html:"dashboard/fetchRegistrations.html dashboard/root.html common.html"`
+		Reprint            *templates.Template `html:"dashboard/reprint.html dashboard/root.html common.html"`
+		Form               *templates.Template `html:"dashboard/form.html"`
 	}
 }
 
@@ -117,6 +120,11 @@ func (svc *dashboardService) Serve_dashboard_classes(rc *requestContext) error {
 		return err
 	}
 
+	conf, err := svc.store.GetConference(rc.context())
+	if err != nil {
+		return err
+	}
+
 	model.SortClasses(classes, rc.request.FormValue("sort"))
 	switch sortKey, reverse := model.SortKeyReverse(rc.request.FormValue("sort")); sortKey {
 	case "registered":
@@ -141,10 +149,12 @@ func (svc *dashboardService) Serve_dashboard_classes(rc *requestContext) error {
 
 	var data = struct {
 		Classes    []*model.Class
+		Lunch      interface{}
 		Registered interface{}
 		Available  interface{}
 	}{
 		Classes: classes,
+		Lunch:   conf.ClassLunch,
 		Registered: func(c *model.Class) string {
 			n := registered[c.Number]
 			if n == 0 {
@@ -168,16 +178,22 @@ func (svc *dashboardService) Serve_dashboard_classes_(rc *requestContext) error 
 		return err
 	}
 
+	conf, err := svc.store.GetConference(rc.context())
+	if err != nil {
+		return err
+	}
+
 	var data = struct {
 		InstructorView    bool
 		Class             *model.Class
 		Participants      []*model.Participant
 		ParticipantEmails []string
 		InstructorURL     string
-		Lunch             *model.Lunch // XXX
+		Lunch             *model.Lunch
 	}{
 		Class:          class,
 		InstructorView: rc.isStaff,
+		Lunch:          conf.ClassLunch(class),
 	}
 
 	if len(data.Class.AccessToken) >= 4 {
@@ -214,17 +230,14 @@ func (svc *dashboardService) Serve_dashboard_participants(rc *requestContext) er
 	if err != nil {
 		return err
 	}
-	classMap := model.ClassMap(classes)
 	model.SortParticipants(participants, rc.request.FormValue("sort"))
 
 	var data = struct {
 		Participants   []*model.Participant
 		SessionClasses interface{}
 	}{
-		Participants: participants,
-		SessionClasses: func(p *model.Participant) []*model.SessionClass {
-			return model.ParticipantSessionClasses(p, classMap)
-		},
+		participants,
+		model.NewClassMap(classes).ParticipantSessionClasses,
 	}
 	return rc.respond(svc.templates.Participants, http.StatusOK, &data)
 }
@@ -243,18 +256,24 @@ func (svc *dashboardService) Serve_dashboard_participants_(rc *requestContext) e
 		return err
 	}
 
+	conf, err := svc.store.GetConference(rc.context())
+	if err != nil {
+		return err
+	}
+
 	classes, err := svc.store.GetAllClasses(rc.context())
 	if err != nil {
 		return err
 	}
-	sessionClasses := model.ParticipantSessionClasses(participant, model.ClassMap(classes))
 
 	var data = struct {
 		Participant    *model.Participant
 		SessionClasses []*model.SessionClass
+		Lunch          *model.Lunch
 	}{
 		participant,
-		sessionClasses,
+		model.NewClassMap(classes).ParticipantSessionClasses(participant),
+		conf.ParticipantLunch(participant),
 	}
 	return rc.respond(svc.templates.Participant, http.StatusOK, &data)
 }
@@ -441,4 +460,161 @@ func (svc *dashboardService) Serve_dashboard_admin(rc *requestContext) error {
 		DevMode: svc.devMode,
 	}
 	return rc.respond(svc.templates.Admin, http.StatusOK, &data)
+}
+
+func (svc *dashboardService) Serve_dashboard_reprint__forms(rc *requestContext) error {
+	if !rc.isStaff {
+		return httperror.ErrForbidden
+	}
+	if rc.request.Method == "POST" {
+		rc.request.ParseForm()
+		ids := rc.request.Form["id"]
+		n, err := svc.store.SetParticipantsPrintForm(rc.context(), ids, true)
+		if err != nil {
+			return err
+		}
+		return rc.redirect("/dashboard/admin", "info", "%d participants selected, %d reprints queued.", len(ids), n)
+	}
+	participants, err := svc.store.GetAllParticipants(rc.context())
+	if err != nil {
+		return err
+	}
+	model.SortParticipants(participants, "")
+	data := struct {
+		Participants []*model.Participant
+	}{
+		participants,
+	}
+	return rc.respond(svc.templates.Reprint, http.StatusOK, &data)
+}
+
+var formSorts = map[string]func([]*model.Participant){
+	"debug-first": func(participants []*model.Participant) {
+		sort.Slice(participants, func(i, j int) bool {
+			a := len(participants[i].NicknameOrFirstName())
+			b := len(participants[j].NicknameOrFirstName())
+			switch {
+			case a > b:
+				return true
+			case a < b:
+				return false
+			default:
+				return model.DefaultParticipantLess(participants[i], participants[j])
+			}
+		})
+	},
+	"debug-last": func(participants []*model.Participant) {
+		sort.Slice(participants, func(i, j int) bool {
+			a := len(participants[i].LastName)
+			if participants[i].Suffix != "" {
+				a += 1 + len(participants[i].Suffix)
+			}
+			b := len(participants[j].LastName)
+			if participants[j].Suffix != "" {
+				a += 1 + len(participants[j].Suffix)
+			}
+			switch {
+			case a > b:
+				return true
+			case a < b:
+				return false
+			default:
+				return model.DefaultParticipantLess(participants[i], participants[j])
+			}
+		})
+	},
+}
+
+func (svc *dashboardService) Serve_dashboard_forms_(rc *requestContext) error {
+	if !rc.isAdmin {
+		return httperror.ErrForbidden
+	}
+	what := strings.TrimPrefix(rc.request.URL.Path, "/dashboard/forms/")
+	if what == "" {
+		return httperror.ErrNotFound
+	}
+
+	ids := []string{what}
+	if sort := formSorts[what]; sort != nil {
+		participants, err := svc.store.GetAllParticipants(rc.context())
+		if err != nil {
+			return err
+		}
+		sort(participants)
+		ids = make([]string, len(participants))
+		for i := range participants {
+			ids[i] = participants[i].ID
+		}
+	}
+	return svc.renderForms(rc, ids)
+}
+
+func (svc *dashboardService) renderForms(rc *requestContext, ids []string) error {
+	participants, err := svc.store.GetParticipants(rc.context(), ids)
+	if err != nil {
+		return err
+	}
+	conf, err := svc.store.GetConference(rc.context())
+	if err != nil {
+		return err
+	}
+
+	classes, err := svc.store.GetAllClasses(rc.context())
+	if err != nil {
+		return err
+	}
+
+	var data = struct {
+		Participants   []*model.Participant
+		Conference     *model.Conference
+		Lunch          interface{}
+		SessionClasses interface{}
+	}{
+		participants,
+		conf,
+		conf.ParticipantLunch,
+		model.NewClassMap(classes).ParticipantSessionClasses,
+	}
+	return rc.respond(svc.templates.Form, http.StatusOK, &data)
+}
+
+func (svc *dashboardService) Serve_dashboard_vcard(rc *requestContext) error {
+	rc.request.ParseForm()
+	vcard := []byte("BEGIN:VCARD\r\nVERSION:4.0\r\n")
+	for name, values := range rc.request.Form {
+		value := strings.TrimSpace(values[0])
+		if value == "" {
+			continue
+		}
+		vcard = append(vcard, name...)
+		vcard = append(vcard, ':')
+		for i := range value {
+			b := value[i]
+			switch b {
+			case '\\':
+				vcard = append(vcard, `\\`...)
+			case '\n':
+				vcard = append(vcard, `\n`...)
+			case '\r':
+				vcard = append(vcard, `\r`...)
+			case ',':
+				vcard = append(vcard, `\,`...)
+			case ':':
+				vcard = append(vcard, `\:`...)
+			case ';':
+				vcard = append(vcard, `\;`...)
+			default:
+				vcard = append(vcard, b)
+			}
+		}
+		vcard = append(vcard, "\r\n"...)
+	}
+	vcard = append(vcard, "END:VCARD\r\n"...)
+	code, err := qr.Encode(string(vcard), qr.L)
+	if err != nil {
+		return err
+	}
+	rc.response.Header().Set("Content-Type", "image/png")
+	rc.response.Write(code.PNG())
+	return nil
 }

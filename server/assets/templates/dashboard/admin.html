@@ -1,5 +1,5 @@
 {{define "title"}}PTC: Danger Zone{{end}}
-{{define "body"}}
+{{define "body"}}{{with $.Data}}
 
 {{template "refreshClassesButton" $}}
 
@@ -9,9 +9,9 @@
   <div>
   <button type="submit" class="btn btn-outline-secondary">Rebuild catalog</button>
   </div>
-  {{if $.Data.DevMode}}
+  {{if .DevMode}}
     <small class="ml-3 text-muted">
-      Add ?build to catalog page URLs to force build on view. 
+      Add ?build to catalog page URLs to force build on view.
       Example: <a href="/catalog/?build">/catalog/?build</a>.
     </small>
   {{end}}
@@ -31,6 +31,12 @@
   </div>
 </form>
 
-<p>Edit: <a href="/dashboard/conference">Conference</a>
+<p><b>Edit:</b> <a href="/dashboard/conference">Conference</a>
 
-{{end}}
+<p><b>Forms:</b> <a href="/dashboard/reprint-forms">Reprint</a>
+  {{if .DevMode}}
+    | <a href="/dashboard/forms/debug-first">Debug First</a>
+    | <a href="/dashboard/forms/debug-last">Debug Last</a>
+  {{end}}
+
+{{end}}{{end}}

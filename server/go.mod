@@ -16,4 +16,5 @@ require (
 	google.golang.org/appengine v1.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20190513181449-d00d292a067c // indirect
 	google.golang.org/grpc v1.20.1
+	rsc.io/qr v0.2.0
 )

@@ -3,6 +3,9 @@
 {{define "body"}}{{with .Data}}
 
 {{with .Participant}}
+  {{if $.IsAdmin}}
+    <a class="float-right btn btn-outline-secondary" href="/dashboard/forms/{{.ID}}">Form</a>
+  {{end}}
   <h3>{{.Name}}</h3>
   <p>
   <table class="mb-3 table-sm">
@@ -12,10 +15,12 @@
     <tr><th>Council / District</th><td>{{.Council}} / {{.District}}</td></tr>
     <tr><th>Email</th><td>{{with .Emails}}<a href="mailto:{{range $i, $e := .}}{{if $i}},{{end}}{{$e}}{{end}}">{{range $i, $e := .}}{{if $i}}, {{end}}{{$e}}{{end}}</a>{{end}}</td></tr>
     <tr><th>OA Banquet</th><td>{{if .OABanquet}}yes{{else}}no{{end}}</td></tr>
+    <tr><th>Lunch</th><td>{{$.Data.Lunch.Name}}{{with $.Data.Lunch.Location}} @ {{.}}{{end}}</td></tr>
     {{if $.IsAdmin}}
       <tr><th>Login Code</th><td>{{.LoginCode}}</td></tr>
       <tr><th>Dietary Rest.</th><td>{{.DietaryRestrictions}}</td></tr>
       <tr><th>Show QR Code</th><td>{{if .ShowQRCode}}yes{{else}}no{{end}}</td></tr>
+      <tr><th>Print queued</th><td>{{if .PrintForm}}yes{{else}}no{{end}}</td></tr>
       <tr><th>Phone</th><td>{{.Phone}}</td></tr>
       <tr><th>Address</th><td>{{.Address}}, {{.City}}, {{.State}} {{.Zip}}</td></tr>
       <tr><th>BSA #</th><td>{{.BSANumber}}</td></tr>

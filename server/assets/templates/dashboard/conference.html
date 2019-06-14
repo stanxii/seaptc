@@ -5,7 +5,7 @@
 {{if .Invalid}}<div class="alert alert-danger" role="alert"><strong>Eek!</strong> Fix the errors noted below and try again. </div>{{end}}
 
 <form method="POST" class="mb-3">
-  {{$.XSRFToken "/dashboard/conference"}}
+  {{$.XSRFToken $.Request.URL.Path}}
 
   <div class="form-group">
     <label>Year / Month / Day</label>

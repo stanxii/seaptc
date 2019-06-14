@@ -5,7 +5,7 @@
 {{if .Invalid}}<div class="alert alert-danger" role="alert"><strong>Eek!</strong> Fix the errors noted below and try again. </div>{{end}}
 {{if .Err}}<div class="alert alert-danger" role="alert">Error fetching registrations: {{.Err}}</div>{{end}}
 
-<form method="POST" class="mb-3" action="{{$.Request.URL.Path}}">
+<form method="POST" class="mb-3">
   {{$.XSRFToken $.Request.URL.Path}}
 
   <div class="form-group">

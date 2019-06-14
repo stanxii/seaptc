@@ -55,7 +55,7 @@ type participantΠImportHashLoginCode struct {
 // xParticipant overrides datastore load and save on a model.Participant
 type xParticipant model.Participant
 
-var deletedParticipantFields = map[string]bool{}
+var deletedParticipantFields = map[string]bool{"needsPrint": true, "printSchedule": true}
 
 func (p *xParticipant) Load(ps []datastore.Property) error {
 	err := datastore.LoadStruct((*model.Participant)(p), filterProperties(ps, deletedParticipantFields))
@@ -80,6 +80,26 @@ func (store *Store) GetParticipant(ctx context.Context, id string) (*model.Parti
 	var xp xParticipant
 	err := store.dsClient.Get(ctx, participantKey(id), &xp)
 	return (*model.Participant)(&xp), err
+}
+
+func (store *Store) GetParticipants(ctx context.Context, ids []string) ([]*model.Participant, error) {
+	keys := make([]*datastore.Key, len(ids))
+	for i, id := range ids {
+		keys[i] = participantKey(id)
+	}
+	xparticipants := make([]*xParticipant, len(ids))
+	err := noEntityOK(store.dsClient.GetMulti(ctx, keys, xparticipants))
+	if err != nil {
+		return nil, err
+	}
+	var participants []*model.Participant
+	for _, xp := range xparticipants {
+		if xp == nil {
+			continue
+		}
+		participants = append(participants, (*model.Participant)(xp))
+	}
+	return participants, err
 }
 
 func (store *Store) getParticpantClasses(ctx context.Context) ([]*datastore.Key, []participantΠClass, error) {
@@ -112,7 +132,8 @@ var allParticipantsQuery = datastore.NewQuery(participantKind).Ancestor(conferen
 	model.Participant_UnitType,
 	model.Participant_Staff,
 	model.Participant_StaffRole,
-	model.Participant_Youth)
+	model.Participant_Youth,
+	model.Participant_PrintForm)
 
 func (store *Store) GetAllParticipants(ctx context.Context) ([]*model.Participant, error) {
 
@@ -242,6 +263,9 @@ func (store *Store) ImportParticipants(ctx context.Context, participants []*mode
 				return err
 			}
 			xp.ImportHash = hash
+			if !xp.PrintForm && !p.EqualPrintFields((*model.Participant)(&xp)) {
+				xp.PrintForm = true
+			}
 			p.CopyImportFieldsTo((*model.Participant)(&xp))
 			mutations = append(mutations, datastore.NewUpdate(key, &xp))
 		}
@@ -267,4 +291,28 @@ func (store *Store) ImportParticipants(ctx context.Context, participants []*mode
 	})
 
 	return mutationCount, err
+}
+
+func (store *Store) SetParticipantsPrintForm(ctx context.Context, participantIDs []string, printForm bool) (int, error) {
+	keys := make([]*datastore.Key, len(participantIDs))
+	for i, id := range participantIDs {
+		keys[i] = participantKey(id)
+	}
+	return store.updateEntities(ctx, keys, func(xp *xParticipant) error {
+		if xp.PrintForm == printForm {
+			return errNoUpdate
+		}
+		xp.PrintForm = printForm
+		return nil
+	})
+}
+
+// UpdateParticipants gets and puts all entities. Use when adding new indexed fields to the entity.
+func (store *Store) UpdateParticipants(ctx context.Context) error {
+	keys, err := store.dsClient.GetAll(ctx, datastore.NewQuery(participantKind).Ancestor(conferenceEntityGroupKey).KeysOnly(), nil)
+	if err != nil {
+		return err
+	}
+	_, err = store.updateEntities(ctx, keys, func(*xParticipant) error { return nil })
+	return err
 }

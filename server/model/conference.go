@@ -8,8 +8,9 @@ import (
 //go:generate go run gogen.go -input conference.go -output gen_conference.go Conference
 
 type Lunch struct {
-	Name     string `json:"name" datastore:"name,noindex"`
-	Location string `json:"location" datastore:"location,noindex"`
+	Name      string `json:"name" datastore:"name,noindex"`
+	ShortName string `json:"shortName" datastore:"shortName,noindex"`
+	Location  string `json:"location" datastore:"location,noindex"`
 
 	// 1: first, 2: second
 	Seating int `json:"seating" datastore:"seating,noindex"`
@@ -69,4 +70,39 @@ func (c *Conference) setupLunch() {
 			}
 		}
 	})
+}
+
+var (
+	tbdLunch     = &Lunch{Seating: 2, Name: "TBD", ShortName: "TBD", Location: "TBD"}
+	programLunch = &Lunch{Seating: 2, Name: "Lunch location depends on participant unit type", ShortName: "*"}
+)
+
+func (c *Conference) ClassLunch(class *Class) *Lunch {
+	c.setupLunch()
+	start, end := class.StartEnd()
+	if start > 2 || end < 2 {
+		return nil
+	}
+	l := c.lunch.byClass[class.Number]
+	if l == nil {
+		l = programLunch
+	}
+	return l
+}
+
+func (c *Conference) ParticipantLunch(p *Participant) *Lunch {
+	c.setupLunch()
+	// XXX check instructor classes
+	for _, class := range p.Classes {
+		if l, ok := c.lunch.byClass[class]; ok {
+			return l
+		}
+	}
+	if l, ok := c.lunch.byUnitType[p.UnitType]; ok {
+		return l
+	}
+	if len(c.Lunches) == 0 {
+		return tbdLunch
+	}
+	return c.Lunches[0]
 }
