@@ -6,7 +6,7 @@
   {{if $.IsAdmin}}
     <a class="float-right btn btn-outline-secondary" href="/dashboard/forms/{{.ID}}">Form</a>
   {{end}}
-  <h3>{{.Name}}</h3>
+  <h3>{{.Name}}{{with .Nickname}} ({{.}}){{end}}</h3>
   <p>
   <table class="mb-3 table-sm">
     <tr><th>Reg #</th><td>{{.RegistrationNumber}}</td></tr>

@@ -216,9 +216,18 @@ func cleanParticipant(p *participant) {
 	p.Nickname = titleCase(p.Nickname)
 	p.RegisteredByName = p.registeredByFirstName + " " + p.registeredByLastName
 
-	if p.Nickname == p.FirstName {
-		// Remove trivial nickname
-		p.Nickname = ""
+	if p.Nickname != "" {
+		if strings.ToLower(p.Nickname) == strings.ToLower(p.FirstName) {
+			// Remove trivial nickname
+			p.Nickname = ""
+		} else {
+			// Remove last name from end of nickname.
+			i := len(p.Nickname) - len(p.LastName) - 1
+			fmt.Println(i, p.LastName, len(p.LastName), p.Nickname, len(p.Nickname))
+			if i > 0 && p.Nickname[i] == ' ' && p.Nickname[i+1:] == p.LastName {
+				p.Nickname = p.Nickname[:i]
+			}
+		}
 	}
 
 	if removeSuffix[p.Suffix] {
