@@ -10,5 +10,6 @@ const (
 	Conference_NoClassDescription   = "noClassDescription"
 	Conference_OABanquetDescription = "oaBanquetDescription"
 	Conference_RegistrationURL      = "registrationURL"
+	Conference_StaffIDs             = "staffIDs"
 	Conference_Year                 = "year"
 )

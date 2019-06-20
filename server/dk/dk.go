@@ -223,7 +223,6 @@ func cleanParticipant(p *participant) {
 		} else {
 			// Remove last name from end of nickname.
 			i := len(p.Nickname) - len(p.LastName) - 1
-			fmt.Println(i, p.LastName, len(p.LastName), p.Nickname, len(p.Nickname))
 			if i > 0 && p.Nickname[i] == ' ' && p.Nickname[i+1:] == p.LastName {
 				p.Nickname = p.Nickname[:i]
 			}

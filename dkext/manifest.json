@@ -1,36 +1,41 @@
 {
-  "manifest_version": 2,
-  "name": "DKExtender",
-  "version": "0.1",
-  "permissions": [
+  "manifest_version":2,
+  "name":"DKExtender",
+  "version":"0.1",
+  "permissions":[
     "tabs",
-    "http://localhost:8080/session-events/*",
-    "https://seatpc.org/session-events/*"
+    "storage",
+    "http://localhost:8080/api/*",
+    "https://seaptc.org/api/*"
   ],
-  "background": {
-    "scripts": ["background.js"],
-    "persistent": false
+  "background":{
+    "scripts":[
+      "common.js",
+      "background.js"
+    ],
+    "persistent":false
   },
-  "content_scripts": [
+  "content_scripts":[
     {
-      "matches": [
+      "matches":[
         "https://*.doubleknot.com/manageevents/confirmedit.asp?*",
         "https://*.doubleknot.com/ManageEvents/ConfirmEdit.asp?*",
         "https://*.doubleknot.com/ManageEvents/EditActivity.asp"
       ],
-      "js": ["class.js", "sessionevent.js"]
+      "js":[
+        "common.js",
+        "class.js",
+        "sessionevent.js"
+      ]
     },
     {
-      "matches": [
-	"https://*.doubleknot.com/manageevents/eventsmanagement.aspx?*"
+      "matches":[
+        "https://*.doubleknot.com/manageevents/eventsmanagement.aspx?*"
       ],
-      "js": ["programsession.js"]
-    },
-    {
-      "matches": [
-	"https://*.doubleknot.com/manageevents/viewregistrations.aspx?*"
-      ],
-      "js": ["viewregistrations.js"]
+      "js":[
+        "common.js",
+        "programsession.js"
+      ]
     }
   ]
 }

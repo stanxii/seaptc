@@ -16,7 +16,6 @@ import (
 
 	"github.com/garyburd/web/templates"
 	"github.com/seaptc/server/model"
-	"golang.org/x/net/xsrftoken"
 )
 
 // templateContext is the root value passed to template execute.
@@ -43,10 +42,8 @@ func (tc *templateContext) FlashMessage() interface{} {
 }
 
 func (tc *templateContext) XSRFToken(path string) htemp.HTML {
-	rc := tc.rc
-	id := fmt.Sprintf("%s\000%s", rc.staffID, rc.participantID)
-	t := xsrftoken.Generate(rc.application.config.XSRFKey, id, path)
-	return htemp.HTML(fmt.Sprintf(`<input type="hidden" name="_xsrftoken" value="%s">`, t))
+	return htemp.HTML(fmt.Sprintf(`<input type="hidden" name="_xsrftoken" value="%s">`,
+		tc.rc.xsrfToken(path)))
 }
 
 func (tc *templateContext) Sort(text string, key string) (htemp.HTML, error) {

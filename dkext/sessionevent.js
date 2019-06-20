@@ -1,24 +1,19 @@
 // Content script for "Create and Modify a Session Event".
+"use strict";
 
 var form = null;   // Look for controls in this form.
 var info = null;   // Display information in this element.
 
 // fetchClass fetches class with given number from the server and updates the
 // contents of the info element as appropriate.
-function fetchClass(num) {
+async function fetchClass(num) {
   showMessage(`Fetching class ${num} from the server...`);
-  chrome.runtime.sendMessage({"handler": "fetchClass", "num": num},
-    m => {
-      if (!m) {
-        showMessage("Bad response from server.");
-      } else if (m.error) {
-        showMessage(m.error);
-      } else if (m.result) {
-        showProposedModifications(controlValuesFromClass(m.result));
-      } else {
-        showMessage("Bad response from server.");
-      }
-    });
+  let [err, cls] = await catchEm(callBackground("fetchClass", num));
+  if (err) {
+    showMessage(err);
+  } else {
+    showProposedModifications(controlValuesFromClass(cls));
+  }
 }
 
 // showMessage replaces the info element contents with the given message and

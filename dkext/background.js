@@ -1,43 +1,56 @@
-//const server = "https://seaptc.org"
-const server = "http://localhost:8080"
+"use strict";
 
-let tabURLs = [];
+const server = "https://seaptc.org";
+//const server = "http://localhost:8080";
 
-function fetchClass(request, sender, sendResponse) {
-  // The session event page fetches class after page load.  Create next tab in
-  // queue, if any.
-  createNextTab();
+let sessionEventURLs = [];
 
-  let url = `${server}/session-events/${request.num}`;
-  console.log('Requesting', url);
-  fetch(url)
-    .then(response => response.json())
-    .then(m => sendResponse(m));
-}
-
-function openTabs(request, sender, sendResponse) {
-  tabURLs = request.urls;
-  createNextTab();
-}
-
-function createNextTab() {
-  let url = tabURLs.pop();
+async function createNextSessionEventTab() {
+  let url = sessionEventURLs.pop();
   if (url) {
-    chrome.tabs.create({ url: url });
+    await chromeTabs.create({ url: url });
   }
 }
 
-let handlers = {
-  "openTabs": openTabs,
-  "fetchClass": fetchClass
-};
+async function createSessionEventTabs(sender, urls) {
+  sessionEventURLs = urls;
+  await createNextSessionEventTab();
+}
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  let h = handlers[request.handler];
-  if (!h) {
-    console.log(`No handler for request ${request}`);
-    return false;
+async function fetchClass(sender, number) {
+  await createNextSessionEventTab();
+  let url = `${server}/api/sessionEvents/${number}`;
+  let response = await fetch(url);
+  let m = await response.json();
+  if (m.error) {
+    throw m.error;
   }
-  h(request, sender, sendResponse);
-  return true;
+  return m.result;
+}
+
+/*
+async function uploadExportFile(request, sender, sendResponse) {
+  let response = await fetch(request.file);
+  let blob = await response.blob();
+
+  response = await fetch(request.server + "/api/uploadToken");
+  let token = await response.json();
+
+  let formData = new FormData();
+  formData.append(token.result.name, token.result.value);
+  formData.append("file", blob);
+
+  response = await fetch(request.server + "/api/uploadRegistrations", {
+    method: "POST",
+    body: formData
+  });
+
+  let x = await response.json();
+  sendResponse(x);
+}
+*/
+
+listenBackground({
+  "createSessionEventTabs": createSessionEventTabs,
+  "fetchClass": fetchClass
 });

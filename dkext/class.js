@@ -1,4 +1,4 @@
-
+"use strict";
 
 function formatClassNumber(n) {
   return n.toString().padStart(3, "0");
@@ -96,7 +96,7 @@ function ampmValue(t) {
 function controlValuesFromClass(cls) {
   let regBy = [cls.startTime[0],cls.startTime[1], cls.startTime[2], 9, 30];
   let regStart = [cls.startTime[0], 3, 1, 9, 30];
-  m = new Map();
+  let m = new Map();
   m.set("Description", descriptionValue(cls));
   m.set("Notes", notesValue(cls));
   m.set("MaxAttendees", maxAttendeesValue(cls));

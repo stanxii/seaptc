@@ -45,6 +45,9 @@ type Conference struct {
 	NoClassDescription   string `json:"noClassDescription" datastore:"noClassDescription,noindex,omitempty"`
 	OABanquetDescription string `json:"oaBanquetDescription" datastore:"oaBanquetDescription,noindex,omitempty"`
 
+	// Whitespace separated email addresses.
+	StaffIDs string `json:"staffIDs" datastore:"staffIDs,noindex,omitempty"`
+
 	lunch struct {
 		once       sync.Once
 		def        *Lunch

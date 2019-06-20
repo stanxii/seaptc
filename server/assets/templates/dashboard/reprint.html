@@ -8,7 +8,7 @@
     <label for="id">Select one or more forms to reprint</label>
     <select multiple size="20" name="id" class="form-control">
       {{range $.Data.Participants}}
-        <option value="{{.ID}}">{{.LastName}}{{with .Suffix}} {{.}}{{end}}, {{.FirstName}}</option>
+        <option value="{{.ID}}">{{.Name}}</option>
       {{end}}
     </select>
   </div>

@@ -278,7 +278,7 @@ func (svc *dashboardService) Serve_dashboard_participants_(rc *requestContext) e
 	return rc.respond(svc.templates.Participant, http.StatusOK, &data)
 }
 
-func (svc *dashboardService) Serve_dashboard_upload__registrations(rc *requestContext) error {
+func (svc *dashboardService) Serve_dashboard_uploadRegistrations(rc *requestContext) error {
 	if rc.request.Method != "POST" {
 		return httperror.ErrMethodNotAllowed
 	}
@@ -308,7 +308,7 @@ func (svc *dashboardService) Serve_dashboard_upload__registrations(rc *requestCo
 	return rc.redirect("/dashboard/admin", "info", "%d registrations loaded from file, %d modified", len(participants), n)
 }
 
-func (svc *dashboardService) Serve_dashboard_fetch__registrations(rc *requestContext) error {
+func (svc *dashboardService) Serve_dashboard_fetchRegistrations(rc *requestContext) error {
 	if !rc.isAdmin {
 		return httperror.ErrForbidden
 	}
@@ -356,7 +356,7 @@ func (svc *dashboardService) Serve_dashboard_fetch__registrations(rc *requestCon
 	return rc.redirect("/dashboard/admin", "info", "%d registrations loaded from file, %d modified", len(participants), n)
 }
 
-func (svc *dashboardService) Serve_dashboard_refresh__classes(rc *requestContext) error {
+func (svc *dashboardService) Serve_dashboard_refreshClasses(rc *requestContext) error {
 	if rc.request.Method != "POST" {
 		return httperror.ErrMethodNotAllowed
 	}
@@ -438,6 +438,7 @@ func (svc *dashboardService) Serve_dashboard_conference(rc *requestContext) erro
 	conf.CatalogStatusMessage = data.Form.Get("catalogStatusMessage")
 	conf.NoClassDescription = data.Form.Get("noClassDescription")
 	conf.OABanquetDescription = data.Form.Get("oaBanquetDescription")
+	conf.StaffIDs = data.Form.Get("staffIDs")
 	if len(data.Invalid) > 0 {
 		return rc.respond(svc.templates.Conference, http.StatusOK, &data)
 	}
@@ -462,7 +463,7 @@ func (svc *dashboardService) Serve_dashboard_admin(rc *requestContext) error {
 	return rc.respond(svc.templates.Admin, http.StatusOK, &data)
 }
 
-func (svc *dashboardService) Serve_dashboard_reprint__forms(rc *requestContext) error {
+func (svc *dashboardService) Serve_dashboard_reprintForms(rc *requestContext) error {
 	if !rc.isStaff {
 		return httperror.ErrForbidden
 	}
@@ -489,7 +490,7 @@ func (svc *dashboardService) Serve_dashboard_reprint__forms(rc *requestContext) 
 }
 
 var formSorts = map[string]func([]*model.Participant){
-	"debug-first": func(participants []*model.Participant) {
+	"debugFirst": func(participants []*model.Participant) {
 		sort.Slice(participants, func(i, j int) bool {
 			a := len(participants[i].NicknameOrFirstName())
 			b := len(participants[j].NicknameOrFirstName())
@@ -503,7 +504,7 @@ var formSorts = map[string]func([]*model.Participant){
 			}
 		})
 	},
-	"debug-last": func(participants []*model.Participant) {
+	"debugLast": func(participants []*model.Participant) {
 		sort.Slice(participants, func(i, j int) bool {
 			a := len(participants[i].LastName)
 			if participants[i].Suffix != "" {

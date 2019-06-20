@@ -35,7 +35,7 @@ func main() {
 		&catalogService{},
 		&dashboardService{},
 		&loginService{},
-		&sessionEventsService{})
+		&apiService{})
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -13,33 +13,52 @@ import (
 	"github.com/garyburd/web/httperror"
 	"github.com/garyburd/web/templates"
 
+	"github.com/seaptc/server/dk"
 	"github.com/seaptc/server/model"
 	"github.com/seaptc/server/store"
 )
 
-type sessionEventsService struct {
+type apiService struct {
 	*application
 	templates struct {
-		Error *templates.Template `text:"sessionevents/error.json"`
+		Error *templates.Template `text:"api/error.json"`
 	}
 }
 
-func (svc *sessionEventsService) init(ctx context.Context, a *application, tm *templates.Manager) error {
+func (svc *apiService) init(ctx context.Context, a *application, tm *templates.Manager) error {
 	svc.application = a
 	tm.NewFromFields(&svc.templates)
 	return nil
 }
 
-func (svc *sessionEventsService) errorTemplate() *templates.Template {
+func (svc *apiService) errorTemplate() *templates.Template {
 	return svc.templates.Error
 }
 
-func (svc *sessionEventsService) makeHandler(v interface{}) func(*requestContext) error {
-	f, ok := v.(func(*sessionEventsService, *requestContext) error)
+func (svc *apiService) makeHandler(v interface{}) func(*requestContext) error {
+	f, ok := v.(func(*apiService, *requestContext) error)
 	if !ok {
 		return nil
 	}
 	return func(rc *requestContext) error { return f(svc, rc) }
+}
+
+func (svc *apiService) Serve_api_(rc *requestContext) error {
+	return httperror.ErrNotFound
+}
+
+func (svc *apiService) respond(rc *requestContext, data interface{}) error {
+	data = map[string]interface{}{"result": data}
+	p, err := json.MarshalIndent(data, "", "   ")
+	if err != nil {
+		return err
+	}
+	rc.response.Header().Set("Content-Type", "application/json")
+	rc.response.Header().Set("Content-Length", strconv.Itoa(len(p)))
+	if rc.request.Method != "HEAD" {
+		rc.response.Write(p)
+	}
+	return nil
 }
 
 type sessionEvent struct {
@@ -99,8 +118,8 @@ func createSpecialSessionEvent(number int, title string, start, end time.Duratio
 	}
 }
 
-func (svc *sessionEventsService) Serve_session__events_(rc *requestContext) error {
-	numString := strings.TrimPrefix(rc.request.URL.Path, "/session-events/")
+func (svc *apiService) Serve_api_sessionEvents_(rc *requestContext) error {
+	numString := strings.TrimPrefix(rc.request.URL.Path, "/api/sessionEvents/")
 	number, err := strconv.Atoi(numString)
 	if err != nil {
 		return &httperror.Error{Status: http.StatusNotFound, Message: fmt.Sprintf("Class %q not found.", numString)}
@@ -135,15 +154,42 @@ func (svc *sessionEventsService) Serve_session__events_(rc *requestContext) erro
 		se = createSessionEvent(conf, class)
 	}
 
-	rc.response.Header().Set("Content-Type", "application/json")
-	if rc.request.Method == "HEAD" {
-		return nil
+	return svc.respond(rc, se)
+}
+
+func (svc *apiService) Serve_api_uploadRegistrationsToken(rc *requestContext) error {
+	return svc.respond(rc, map[string]interface{}{
+		"name":  "_xsrftoken",
+		"value": rc.xsrfToken("/api/uploadRegistrations"),
+	})
+}
+
+func (svc *apiService) Serve_api_uploadRegistrations(rc *requestContext) error {
+	if rc.request.Method != "POST" {
+		return httperror.ErrMethodNotAllowed
 	}
-	data := map[string]interface{}{"result": se}
-	p, err := json.MarshalIndent(data, "", "   ")
+	if !rc.isAdmin {
+		return httperror.ErrForbidden
+	}
+
+	f, _, err := rc.request.FormFile("file")
+	if err == http.ErrMissingFile {
+		return &httperror.Error{Status: 400, Message: "Export file not uploaded"}
+	}
 	if err != nil {
 		return err
 	}
-	rc.response.Write(p)
-	return nil
+	defer f.Close()
+
+	participants, err := dk.ParseCSV(f)
+	if err != nil {
+		return err
+	}
+
+	n, err := svc.store.ImportParticipants(rc.context(), participants)
+	if err != nil {
+		return err
+	}
+
+	return svc.respond(rc, map[string]interface{}{"count": n})
 }

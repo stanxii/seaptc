@@ -247,6 +247,7 @@ func (store *Store) ImportParticipants(ctx context.Context, participants []*mode
 				// Participant not in datastore, insert.
 				p.ImportHash = hash
 				p.LoginCode, err = getUniqueLoginCode(codes)
+				p.PrintForm = true
 				if err != nil {
 					return err
 				}

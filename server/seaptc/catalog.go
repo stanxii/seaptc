@@ -142,7 +142,7 @@ func (svc *catalogService) Serve_catalog_(rc *requestContext) error {
 	return nil
 }
 
-func (svc *catalogService) Serve_dashboard_rebuild__catalog(rc *requestContext) error {
+func (svc *catalogService) Serve_dashboard_rebuildCatalog(rc *requestContext) error {
 	if rc.request.Method != "POST" {
 		return httperror.ErrMethodNotAllowed
 	}

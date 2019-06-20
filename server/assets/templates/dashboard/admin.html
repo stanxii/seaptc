@@ -3,8 +3,8 @@
 
 {{template "refreshClassesButton" $}}
 
-<form class="form-inline mb-3" action="/dashboard/rebuild-catalog" class="form-inline" method="post">
-   {{$.XSRFToken "/dashboard/rebuild-catalog"}}
+<form class="form-inline mb-3" action="/dashboard/rebuildCatalog" class="form-inline" method="post">
+   {{$.XSRFToken "/dashboard/rebuildCatalog"}}
   <input type="hidden" name="_ref" value="{{$.Request.URL.RequestURI}}">
   <div>
   <button type="submit" class="btn btn-outline-secondary">Rebuild catalog</button>
@@ -17,8 +17,8 @@
   {{end}}
 </form>
 
-<form class="form-inline mb-3" action="/dashboard/upload-registrations" enctype="multipart/form-data" method="POST">
-  {{$.XSRFToken "/dashboard/upload-registrations"}}
+<form class="form-inline mb-3" action="/dashboard/uploadRegistrations" enctype="multipart/form-data" method="POST">
+  {{$.XSRFToken "/dashboard/uploadRegistrations"}}
   <input type="hidden" name="_ref" value="{{$.Request.URL.RequestURI}}">
   <div class="input-group form-group">
     <div class="custom-file">
@@ -33,10 +33,10 @@
 
 <p><b>Edit:</b> <a href="/dashboard/conference">Conference</a>
 
-<p><b>Forms:</b> <a href="/dashboard/reprint-forms">Reprint</a>
+<p><b>Forms:</b> <a href="/dashboard/reprintForms">Reprint</a>
   {{if .DevMode}}
-    | <a href="/dashboard/forms/debug-first">Debug First</a>
-    | <a href="/dashboard/forms/debug-last">Debug Last</a>
+    | <a href="/dashboard/forms/debugFirst">Debug First</a>
+    | <a href="/dashboard/forms/debugLast">Debug Last</a>
   {{end}}
 
 {{end}}{{end}}

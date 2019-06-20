@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -33,7 +34,12 @@ type application struct {
 	participantIDCodec *cookie.Codec
 
 	adminIDs map[string]bool
-	staffIDs map[string]bool
+
+	staffIDs struct {
+		mu        sync.Mutex
+		value     map[string]bool
+		refreshed time.Time
+	}
 }
 
 type applicationService interface {
@@ -59,7 +65,6 @@ func newApplication(ctx context.Context, st *store.Store, devMode bool, assetDir
 		store:    st,
 		config:   config,
 		adminIDs: make(map[string]bool),
-		staffIDs: make(map[string]bool),
 		flashCodec: cookie.NewCodec("f",
 			cookie.WithSecure(!devMode)),
 		staffIDCodec: cookie.NewCodec("s",
@@ -74,11 +79,8 @@ func newApplication(ctx context.Context, st *store.Store, devMode bool, assetDir
 
 	for _, id := range a.config.AdminIDs {
 		a.adminIDs[id] = true
-		a.staffIDs[id] = true
 	}
-	for _, id := range a.config.StaffIDs {
-		a.staffIDs[id] = true
-	}
+	a.staffIDs.value = make(map[string]bool)
 
 	tm := newTemplateManager(assetDir)
 	mux := http.NewServeMux()
@@ -110,9 +112,8 @@ func newApplication(ctx context.Context, st *store.Store, devMode bool, assetDir
 			if f == nil {
 				return nil, fmt.Errorf("could not create handler for %v.%s", t, m.Name)
 			}
-			// Convert __ to - and _ to /.
-			path := strings.ReplaceAll(strings.TrimPrefix(m.Name, "Serve"), "__", "-")
-			path = strings.ReplaceAll(path, "_", "/")
+			// Convert _ to /.
+			path := strings.ReplaceAll(strings.TrimPrefix(m.Name, "Serve"), "_", "/")
 			mux.Handle(path, &handler{application: &a, svc: svc, f: f})
 		}
 	}
@@ -121,6 +122,26 @@ func newApplication(ctx context.Context, st *store.Store, devMode bool, assetDir
 		return nil, err
 	}
 	return mux, nil
+}
+
+func (a *application) getStaffIDs(ctx context.Context) map[string]bool {
+	a.staffIDs.mu.Lock()
+	defer a.staffIDs.mu.Unlock()
+	if time.Since(a.staffIDs.refreshed) < 10*time.Minute {
+		return a.staffIDs.value
+	}
+	conf, err := a.store.GetConference(ctx)
+	if err != nil {
+		log.Println("error getting conference for staffIDs: %v", err)
+		return a.staffIDs.value
+	}
+	v := make(map[string]bool)
+	for _, f := range strings.Fields(conf.StaffIDs) {
+		v[strings.ToLower(f)] = true
+	}
+	a.staffIDs.refreshed = time.Now()
+	a.staffIDs.value = v
+	return v
 }
 
 type handler struct {
@@ -159,11 +180,14 @@ func (h *handler) ServeHTTP(response http.ResponseWriter, request *http.Request)
 			rc.logf("xsrf check failed for staffID=%q, particpiantID=%q", rc.staffID, rc.participantID)
 			rc.participantID = ""
 			rc.staffID = ""
+			fmt.Println(rc.request.Form)
 		}
 	}
 
-	rc.isAdmin = a.adminIDs[rc.staffID]
-	rc.isStaff = a.staffIDs[rc.staffID]
+	if rc.staffID != "" {
+		rc.isAdmin = a.adminIDs[rc.staffID]
+		rc.isStaff = rc.isAdmin || a.getStaffIDs(rc.context())[rc.staffID]
+	}
 
 	rc.logf("request: %s %s %s", rc.request.Method, rc.request.URL.Path, rc.staffID)
 
@@ -223,4 +247,9 @@ func (rc *requestContext) logf(format string, args ...interface{}) {
 
 func (rc *requestContext) respond(t *templates.Template, status int, data interface{}) error {
 	return t.WriteResponse(rc.response, rc.request, status, &templateContext{rc: rc, Data: data})
+}
+
+func (rc *requestContext) xsrfToken(path string) string {
+	id := fmt.Sprintf("%s\000%s", rc.staffID, rc.participantID)
+	return xsrftoken.Generate(rc.application.config.XSRFKey, id, path)
 }

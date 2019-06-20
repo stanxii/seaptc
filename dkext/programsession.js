@@ -1,6 +1,5 @@
 // Content script for "Manage a Program Session".
-
-
+"use strict";
 
 (() => {
   let title = document.querySelector("#pagetitlediv table tbody tr:first-of-type th");
@@ -60,9 +59,8 @@
     anchor.href = "#";
     anchor.style = "text-decoration: none;";
     anchor.onclick = () => {
-      chrome.runtime.sendMessage({"handler": "openTabs", "urls": hrefs})
+      callBackground("createSessionEventTabs", hrefs).catch(reason => alert(reason));
       return false
     };
   }
-
 })();

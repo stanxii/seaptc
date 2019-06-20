@@ -50,6 +50,12 @@
     <div class="invalid-feedback">{{index .Invalid "lunches"}}</div>
   </div>
 
+  <div class="form-group">
+    <label>Staff</label>
+    <textarea class="form-control" name="staffIDs" rows="12">{{.Conference.StaffIDs}}</textarea>
+    <small class="form-text text-muted">Email addresses separated by whitespace.</small>
+  </div>
+
   <button type="submit" name="submit" value="submit" class="btn btn-primary">Submit</button>
   <a class="btn btn-secondary" href="/dashboard/admin">Cancel</a>
 </form>

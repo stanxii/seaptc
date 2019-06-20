@@ -93,7 +93,7 @@ func (svc *loginService) Serve_login_callback(rc *requestContext) error {
 		return err
 	}
 	id := strings.ToLower(userInfo.Email)
-	if svc.adminIDs[id] || svc.staffIDs[id] {
+	if svc.adminIDs[id] || svc.getStaffIDs(rc.context())[id] {
 		svc.staffIDCodec.Encode(rc.response, id)
 		rc.logf("login success: %s", id)
 	} else {
