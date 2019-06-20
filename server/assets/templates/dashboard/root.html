@@ -38,7 +38,7 @@
 {{end}}
 
 {{define "refreshClassesButton"}}{{if $.IsStaff -}}
-    <form class="form-inline mb-3" action="/dashboard/refreshClasses" class="form-inline" method="post">
+    <form class="form-inline mb-3 d-print-none" action="/dashboard/refreshClasses" class="form-inline" method="post">
       {{$.XSRFToken "/dashboard/refreshClasses"}}
       <input type="hidden" name="_ref" value="{{$.Request.URL.RequestURI}}">
       <button type="submit" class="btn btn-outline-secondary">Load Classes</button>

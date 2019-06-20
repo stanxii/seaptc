@@ -1,0 +1,21 @@
+{{define "title"}}PTC: Lunch{{end}}
+{{define "body"}}
+{{range $lunch, $particpants := $.Data}}
+  <div class="page room">
+    <table clsas="table" style="page-break-after: always;">
+      <thead>
+        <tr><th colspan="2">{{$lunch.Name}} @ {{$lunch.Location}}</th></tr>
+      </thead>
+      <tbody>
+        {{range $particpants}}
+          <tr><td>{{.Name}}</td><td >{{.DietaryRestrictions}}</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+    <p>
+  </div>
+{{end}}
+</body>
+</html>
+{{end}}
+

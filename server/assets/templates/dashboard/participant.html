@@ -4,7 +4,7 @@
 
 {{with .Participant}}
   {{if $.IsAdmin}}
-    <a class="float-right btn btn-outline-secondary" href="/dashboard/forms/{{.ID}}">Form</a>
+    <a class="float-right btn btn-outline-secondary d-print-none" href="/dashboard/forms/{{.ID}}">Form</a>
   {{end}}
   <h3>{{.Name}}{{with .Nickname}} ({{.}}){{end}}</h3>
   <p>

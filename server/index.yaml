@@ -21,6 +21,7 @@ indexes:
   - name: "unitType"
   - name: "youth"
   - name: "printForm"
+  - name: "dietaryRestrictions"
 - kind: "class"
   ancestor: yes
   properties:

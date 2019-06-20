@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/seaptc/server/model"
+	"golang.org/x/sync/errgroup"
 
 	"cloud.google.com/go/datastore"
 )
@@ -102,7 +103,7 @@ func (store *Store) GetParticipants(ctx context.Context, ids []string) ([]*model
 	return participants, err
 }
 
-func (store *Store) getParticpantClasses(ctx context.Context) ([]*datastore.Key, []participantΠClass, error) {
+func (store *Store) getParticipantClasses(ctx context.Context) ([]*datastore.Key, []participantΠClass, error) {
 	var classes []participantΠClass
 	// no ancestor in query for use of built-in index.
 	query := datastore.NewQuery(participantKind).Project(model.Participant_Classes)
@@ -111,7 +112,7 @@ func (store *Store) getParticpantClasses(ctx context.Context) ([]*datastore.Key,
 }
 
 func (store *Store) GetClassParticipantCounts(ctx context.Context) (map[int]int, error) {
-	_, classes, err := store.getParticpantClasses(ctx)
+	_, classes, err := store.getParticipantClasses(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -133,22 +134,36 @@ var allParticipantsQuery = datastore.NewQuery(participantKind).Ancestor(conferen
 	model.Participant_Staff,
 	model.Participant_StaffRole,
 	model.Participant_Youth,
-	model.Participant_PrintForm)
+	model.Participant_PrintForm,
+	model.Participant_DietaryRestrictions)
 
 func (store *Store) GetAllParticipants(ctx context.Context) ([]*model.Participant, error) {
 
 	// Use two project queries to get core participant fields in two read operations.
 
-	var xparticipants []*xParticipant
-	_, err := store.dsClient.GetAll(ctx, allParticipantsQuery, &xparticipants)
-	if err != nil {
+	var (
+		g             errgroup.Group
+		xparticipants []*xParticipant
+		keys          []*datastore.Key
+		classes       []participantΠClass
+	)
+
+	g.Go(func() error {
+		var err error
+		_, err = store.dsClient.GetAll(ctx, allParticipantsQuery, &xparticipants)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		keys, classes, err = store.getParticipantClasses(ctx)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
-	keys, classes, err := store.getParticpantClasses(ctx)
-	if err != nil {
-		return nil, err
-	}
 	cmap := make(map[string][]int)
 	for i, key := range keys {
 		id := key.Name

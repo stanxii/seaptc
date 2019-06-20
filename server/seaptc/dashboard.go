@@ -12,6 +12,7 @@ import (
 
 	"github.com/garyburd/web/httperror"
 	"github.com/garyburd/web/templates"
+	"golang.org/x/sync/errgroup"
 	"rsc.io/qr"
 
 	"github.com/seaptc/server/dk"
@@ -23,19 +24,21 @@ import (
 type dashboardService struct {
 	*application
 	templates struct {
-		Admin              *templates.Template `html:"dashboard/admin.html dashboard/root.html common.html"`
-		Class              *templates.Template `html:"dashboard/class.html dashboard/root.html common.html"`
-		Classes            *templates.Template `html:"dashboard/classes.html dashboard/root.html common.html"`
-		Conference         *templates.Template `html:"dashboard/conference.html dashboard/root.html common.html"`
-		Error              *templates.Template `html:"dashboard/error.html dashboard/root.html common.html"`
-		FetchRegistrations *templates.Template `html:"dashboard/fetchRegistrations.html dashboard/root.html common.html"`
-		Index              *templates.Template `html:"dashboard/index.html dashboard/root.html common.html"`
-		Instructors        *templates.Template `html:"dashboard/instructors.html dashboard/root.html common.html"`
-		Participant        *templates.Template `html:"dashboard/participant.html dashboard/root.html common.html"`
-		Participants       *templates.Template `html:"dashboard/participants.html dashboard/root.html common.html"`
-		Reprint            *templates.Template `html:"dashboard/reprint.html dashboard/root.html common.html"`
+		Admin        *templates.Template `html:"dashboard/admin.html dashboard/root.html common.html"`
+		Class        *templates.Template `html:"dashboard/class.html dashboard/root.html common.html"`
+		Classes      *templates.Template `html:"dashboard/classes.html dashboard/root.html common.html"`
+		Conference   *templates.Template `html:"dashboard/conference.html dashboard/root.html common.html"`
+		Error        *templates.Template `html:"dashboard/error.html dashboard/root.html common.html"`
+		Index        *templates.Template `html:"dashboard/index.html dashboard/root.html common.html"`
+		Instructors  *templates.Template `html:"dashboard/instructors.html dashboard/root.html common.html"`
+		LunchCount   *templates.Template `html:"dashboard/lunchCount.html dashboard/root.html common.html"`
+		LunchList    *templates.Template `html:"dashboard/lunchList.html dashboard/root.html common.html"`
+		Participant  *templates.Template `html:"dashboard/participant.html dashboard/root.html common.html"`
+		Participants *templates.Template `html:"dashboard/participants.html dashboard/root.html common.html"`
+		Reprint      *templates.Template `html:"dashboard/reprint.html dashboard/root.html common.html"`
 
-		Form *templates.Template `html:"dashboard/form.html"`
+		LunchStickers *templates.Template `html:"dashboard/lunchStickers.html"`
+		Form          *templates.Template `html:"dashboard/form.html"`
 	}
 }
 
@@ -112,18 +115,33 @@ func (svc *dashboardService) Serve_dashboard(rc *requestContext) error {
 }
 
 func (svc *dashboardService) Serve_dashboard_classes(rc *requestContext) error {
-	classes, err := svc.store.GetAllClasses(rc.context())
-	if err != nil {
-		return err
-	}
 
-	registered, err := svc.store.GetClassParticipantCounts(rc.context())
-	if err != nil {
-		return err
-	}
+	var (
+		g          errgroup.Group
+		classes    []*model.Class
+		registered map[int]int
+		conf       *model.Conference
+	)
 
-	conf, err := svc.store.GetConference(rc.context())
-	if err != nil {
+	g.Go(func() error {
+		var err error
+		classes, err = svc.store.GetAllClasses(rc.context())
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		registered, err = svc.store.GetClassParticipantCounts(rc.context())
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		conf, err = svc.store.GetConference(rc.context())
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return err
 	}
 
@@ -175,13 +193,25 @@ func (svc *dashboardService) Serve_dashboard_classes(rc *requestContext) error {
 }
 
 func (svc *dashboardService) Serve_dashboard_classes_(rc *requestContext) error {
-	class, err := svc.getClass(rc, "/dashboard/classes/")
-	if err != nil {
-		return err
-	}
+	var (
+		g     errgroup.Group
+		class *model.Class
+		conf  *model.Conference
+	)
 
-	conf, err := svc.store.GetConference(rc.context())
-	if err != nil {
+	g.Go(func() error {
+		var err error
+		class, err = svc.getClass(rc, "/dashboard/classes/")
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		conf, err = svc.store.GetConference(rc.context())
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return err
 	}
 
@@ -210,6 +240,7 @@ func (svc *dashboardService) Serve_dashboard_classes_(rc *requestContext) error 
 	}
 
 	if data.InstructorView {
+		var err error
 		data.Participants, err = svc.store.GetClassParticipants(rc.context(), class.Number)
 		if err != nil {
 			return err
@@ -224,14 +255,28 @@ func (svc *dashboardService) Serve_dashboard_classes_(rc *requestContext) error 
 }
 
 func (svc *dashboardService) Serve_dashboard_participants(rc *requestContext) error {
-	participants, err := svc.store.GetAllParticipants(rc.context())
-	if err != nil {
+	var (
+		g            errgroup.Group
+		participants []*model.Participant
+		classes      []*model.Class
+	)
+
+	g.Go(func() error {
+		var err error
+		participants, err = svc.store.GetAllParticipants(rc.context())
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		classes, err = svc.store.GetAllClasses(rc.context())
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return err
 	}
-	classes, err := svc.store.GetAllClasses(rc.context())
-	if err != nil {
-		return err
-	}
+
 	model.SortParticipants(participants, rc.request.FormValue("sort"))
 
 	var data = struct {
@@ -251,20 +296,35 @@ func (svc *dashboardService) Serve_dashboard_participants_(rc *requestContext) e
 
 	id := strings.TrimPrefix(rc.request.URL.Path, "/dashboard/participants/")
 
-	participant, err := svc.store.GetParticipant(rc.context(), id)
-	if err == store.ErrNotFound {
-		return httperror.ErrNotFound
-	} else if err != nil {
-		return err
-	}
+	var (
+		g           errgroup.Group
+		participant *model.Participant
+		conf        *model.Conference
+		classes     []*model.Class
+	)
 
-	conf, err := svc.store.GetConference(rc.context())
-	if err != nil {
+	g.Go(func() error {
+		var err error
+		participant, err = svc.store.GetParticipant(rc.context(), id)
+		if err == store.ErrNotFound {
+			err = httperror.ErrNotFound
+		}
 		return err
-	}
+	})
 
-	classes, err := svc.store.GetAllClasses(rc.context())
-	if err != nil {
+	g.Go(func() error {
+		var err error
+		conf, err = svc.store.GetConference(rc.context())
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		classes, err = svc.store.GetAllClasses(rc.context())
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return err
 	}
 
@@ -310,54 +370,6 @@ func (svc *dashboardService) Serve_dashboard_uploadRegistrations(rc *requestCont
 	return rc.redirect("/dashboard/admin", "info", "%d registrations loaded from file, %d modified", len(participants), n)
 }
 
-func (svc *dashboardService) Serve_dashboard_fetchRegistrations(rc *requestContext) error {
-	if !rc.isAdmin {
-		return httperror.ErrForbidden
-	}
-
-	rc.request.ParseForm()
-	data := struct {
-		Form    url.Values
-		Invalid map[string]string
-		Err     error
-	}{
-		rc.request.Form,
-		make(map[string]string),
-		nil,
-	}
-
-	if rc.request.Method != "POST" {
-		return rc.respond(svc.templates.FetchRegistrations, http.StatusOK, &data)
-	}
-
-	url := rc.request.FormValue("url")
-	if url == "" {
-		data.Invalid["url"] = ""
-	}
-
-	if len(data.Invalid) > 0 {
-		return rc.respond(svc.templates.FetchRegistrations, http.StatusOK, &data)
-	}
-
-	header := make(http.Header)
-	for _, key := range []string{"Accept", "Accept-Language", "User-Agent"} {
-		header[key] = rc.request.Header[key]
-	}
-
-	participants, err := dk.FetchCSV(rc.context(), url, header)
-	if err != nil {
-		data.Err = err
-		return rc.respond(svc.templates.FetchRegistrations, http.StatusOK, &data)
-	}
-
-	n, err := svc.store.ImportParticipants(rc.context(), participants)
-	if err != nil {
-		return err
-	}
-
-	return rc.redirect("/dashboard/admin", "info", "%d registrations loaded from file, %d modified", len(participants), n)
-}
-
 func (svc *dashboardService) Serve_dashboard_refreshClasses(rc *requestContext) error {
 	if rc.request.Method != "POST" {
 		return httperror.ErrMethodNotAllowed
@@ -366,13 +378,25 @@ func (svc *dashboardService) Serve_dashboard_refreshClasses(rc *requestContext) 
 		return httperror.ErrForbidden
 	}
 
-	classes, err := sheet.GetClasses(rc.context(), svc.config)
-	if err != nil {
-		return err
-	}
+	var (
+		g                  errgroup.Group
+		classes            []*model.Class
+		suggestedSchedules []*model.SuggestedSchedule
+	)
 
-	suggestedSchedules, err := sheet.GetSuggestedSchedules(rc.context(), svc.config)
-	if err != nil {
+	g.Go(func() error {
+		var err error
+		classes, err = sheet.GetClasses(rc.context(), svc.config)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		suggestedSchedules, err = sheet.GetSuggestedSchedules(rc.context(), svc.config)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return err
 	}
 
@@ -460,6 +484,190 @@ func (svc *dashboardService) Serve_dashboard_instructors(rc *requestContext) err
 	data := struct {
 	}{}
 	return rc.respond(svc.templates.Instructors, http.StatusOK, &data)
+}
+
+func (svc *dashboardService) Serve_dashboard_lunchCount(rc *requestContext) error {
+
+	var (
+		g            errgroup.Group
+		participants []*model.Participant
+		conf         *model.Conference
+	)
+
+	g.Go(func() error {
+		var err error
+		participants, err = svc.store.GetAllParticipants(rc.context())
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		conf, err = svc.store.GetConference(rc.context())
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	data := struct {
+		Lunch       map[*model.Lunch]int
+		Restriction map[string]int
+		Count       map[string]int
+		Total       int
+	}{
+		make(map[*model.Lunch]int),
+		make(map[string]int),
+		make(map[string]int),
+		0,
+	}
+	for _, p := range participants {
+		lunch := conf.ParticipantLunch(p)
+		data.Lunch[lunch]++
+		data.Restriction[p.DietaryRestrictions]++
+		data.Count[fmt.Sprintf("%d:%s", lunch, p.DietaryRestrictions)]++
+		data.Total++
+	}
+	return rc.respond(svc.templates.LunchCount, http.StatusOK, &data)
+}
+
+func (svc *dashboardService) Serve_dashboard_lunchList(rc *requestContext) error {
+	if !rc.isAdmin {
+		return httperror.ErrForbidden
+	}
+
+	var (
+		g            errgroup.Group
+		participants []*model.Participant
+		conf         *model.Conference
+	)
+
+	g.Go(func() error {
+		var err error
+		participants, err = svc.store.GetAllParticipants(rc.context())
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		conf, err = svc.store.GetConference(rc.context())
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	participants = model.FilterParticipants(participants, func(p *model.Participant) bool { return p.DietaryRestrictions != "" })
+	model.SortParticipants(participants, "")
+
+	data := make(map[*model.Lunch][]*model.Participant)
+	for _, p := range participants {
+		l := conf.ParticipantLunch(p)
+		data[l] = append(data[l], p)
+	}
+	return rc.respond(svc.templates.LunchList, http.StatusOK, data)
+}
+
+func (svc *dashboardService) Serve_dashboard_lunchStickers(rc *requestContext) error {
+	if !rc.isAdmin {
+		return httperror.ErrForbidden
+	}
+
+	var (
+		g            errgroup.Group
+		participants []*model.Participant
+		conf         *model.Conference
+	)
+
+	g.Go(func() error {
+		var err error
+		participants, err = svc.store.GetAllParticipants(rc.context())
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		conf, err = svc.store.GetConference(rc.context())
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	participants = model.FilterParticipants(participants, func(p *model.Participant) bool { return p.DietaryRestrictions != "" })
+
+	sort.Slice(participants, func(i, j int) bool {
+		a := participants[i]
+		b := participants[j]
+		alunch := conf.ParticipantLunch(a)
+		blunch := conf.ParticipantLunch(b)
+		switch {
+		case alunch.Name < blunch.Name:
+			return true
+		case alunch.Name > blunch.Name:
+			return false
+		case a.DietaryRestrictions < b.DietaryRestrictions:
+			return true
+		case a.DietaryRestrictions > b.DietaryRestrictions:
+			return false
+		default:
+			return model.DefaultParticipantLess(a, b)
+		}
+	})
+
+	iv := func(name string, def int) int {
+		v, _ := strconv.Atoi(rc.request.FormValue(name))
+		if v <= 0 {
+			return def
+		}
+		return v
+	}
+	sv := func(name string, def string) string {
+		v := rc.request.FormValue(name)
+		if v == "" {
+			return def
+		}
+		return v
+	}
+
+	var data = struct {
+		Rows    int
+		Columns int
+		Top     string
+		Left    string
+		Width   string
+		Height  string
+		Gutter  string
+		Font    string
+		Pages   [][][]*model.Participant
+		Lunch   interface{}
+	}{
+		iv("rows", 7),
+		iv("columns", 2),
+		sv("top", "0.8in"),
+		sv("left", "0in"),
+		sv("width", "4.25in"),
+		sv("height", "1.325in"),
+		sv("gutter", "0.in"),
+		sv("font", "16pt"),
+		nil,
+		conf.ParticipantLunch,
+	}
+	for len(participants) > 0 {
+		var page [][]*model.Participant
+		for i := 0; i < data.Rows && len(participants) > 0; i++ {
+			n := len(participants)
+			if n > data.Columns {
+				n = data.Columns
+			}
+			page = append(page, participants[:n])
+			participants = participants[n:]
+		}
+		data.Pages = append(data.Pages, page)
+	}
+	return rc.respond(svc.templates.LunchStickers, http.StatusOK, &data)
 }
 
 func (svc *dashboardService) Serve_dashboard_admin(rc *requestContext) error {
@@ -562,17 +770,33 @@ func (svc *dashboardService) Serve_dashboard_forms_(rc *requestContext) error {
 }
 
 func (svc *dashboardService) renderForms(rc *requestContext, ids []string) error {
-	participants, err := svc.store.GetParticipants(rc.context(), ids)
-	if err != nil {
-		return err
-	}
-	conf, err := svc.store.GetConference(rc.context())
-	if err != nil {
-		return err
-	}
 
-	classes, err := svc.store.GetAllClasses(rc.context())
-	if err != nil {
+	var (
+		g            errgroup.Group
+		participants []*model.Participant
+		conf         *model.Conference
+		classes      []*model.Class
+	)
+
+	g.Go(func() error {
+		var err error
+		participants, err = svc.store.GetParticipants(rc.context(), ids)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		conf, err = svc.store.GetConference(rc.context())
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		classes, err = svc.store.GetAllClasses(rc.context())
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return err
 	}
 

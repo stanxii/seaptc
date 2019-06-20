@@ -139,3 +139,13 @@ func SortParticipants(participants []*Participant, key string) {
 	}
 	reverse(participants)
 }
+
+func FilterParticipants(participants []*Participant, fn func(*Participant) bool) []*Participant {
+	var result []*Participant
+	for _, p := range participants {
+		if fn(p) {
+			result = append(result, p)
+		}
+	}
+	return result
+}
