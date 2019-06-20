@@ -23,17 +23,19 @@ import (
 type dashboardService struct {
 	*application
 	templates struct {
-		Index              *templates.Template `html:"dashboard/index.html dashboard/root.html common.html"`
-		Error              *templates.Template `html:"dashboard/error.html dashboard/root.html common.html"`
-		Classes            *templates.Template `html:"dashboard/classes.html dashboard/root.html common.html"`
-		Participants       *templates.Template `html:"dashboard/participants.html dashboard/root.html common.html"`
-		Participant        *templates.Template `html:"dashboard/participant.html dashboard/root.html common.html"`
-		Class              *templates.Template `html:"dashboard/class.html dashboard/root.html common.html"`
 		Admin              *templates.Template `html:"dashboard/admin.html dashboard/root.html common.html"`
+		Class              *templates.Template `html:"dashboard/class.html dashboard/root.html common.html"`
+		Classes            *templates.Template `html:"dashboard/classes.html dashboard/root.html common.html"`
 		Conference         *templates.Template `html:"dashboard/conference.html dashboard/root.html common.html"`
+		Error              *templates.Template `html:"dashboard/error.html dashboard/root.html common.html"`
 		FetchRegistrations *templates.Template `html:"dashboard/fetchRegistrations.html dashboard/root.html common.html"`
+		Index              *templates.Template `html:"dashboard/index.html dashboard/root.html common.html"`
+		Instructors        *templates.Template `html:"dashboard/instructors.html dashboard/root.html common.html"`
+		Participant        *templates.Template `html:"dashboard/participant.html dashboard/root.html common.html"`
+		Participants       *templates.Template `html:"dashboard/participants.html dashboard/root.html common.html"`
 		Reprint            *templates.Template `html:"dashboard/reprint.html dashboard/root.html common.html"`
-		Form               *templates.Template `html:"dashboard/form.html"`
+
+		Form *templates.Template `html:"dashboard/form.html"`
 	}
 }
 
@@ -449,6 +451,15 @@ func (svc *dashboardService) Serve_dashboard_conference(rc *requestContext) erro
 	}
 
 	return rc.redirect(rc.request.URL.Path, "info", "Conference updated.")
+}
+
+func (svc *dashboardService) Serve_dashboard_instructors(rc *requestContext) error {
+	if !rc.isStaff {
+		return httperror.ErrForbidden
+	}
+	data := struct {
+	}{}
+	return rc.respond(svc.templates.Instructors, http.StatusOK, &data)
 }
 
 func (svc *dashboardService) Serve_dashboard_admin(rc *requestContext) error {
