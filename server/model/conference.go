@@ -95,10 +95,21 @@ func (c *Conference) ClassLunch(class *Class) *Lunch {
 
 func (c *Conference) ParticipantLunch(p *Participant) *Lunch {
 	c.setupLunch()
-	// XXX check instructor classes
-	for _, class := range p.Classes {
-		if l, ok := c.lunch.byClass[class]; ok {
-			return l
+	var skipClasses bool
+	for _, ic := range p.InstructorClasses {
+		if ic.Session == LunchSession {
+			if l, ok := c.lunch.byClass[ic.Class]; ok {
+				return l
+			}
+			skipClasses = true
+			break
+		}
+	}
+	if !skipClasses {
+		for _, class := range p.Classes {
+			if l, ok := c.lunch.byClass[class]; ok {
+				return l
+			}
 		}
 	}
 	if l, ok := c.lunch.byUnitType[p.UnitType]; ok {

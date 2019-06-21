@@ -32,6 +32,18 @@ func equalStringSlice(a, b []string) bool {
 	return true
 }
 
+func equalInstructorClassSlice(a, b []InstructorClass) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func hashValue(w io.Writer, v interface{}) {
 	switch v := v.(type) {
 	case string:

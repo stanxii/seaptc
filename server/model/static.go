@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	NumSession = 6
+	NumSession   = 6
+	LunchSession = 2
 
 	// Special classses.
 	NoClassClassNumber   = 999

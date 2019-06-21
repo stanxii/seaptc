@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"strconv"
-	"strings"
 
 	"cloud.google.com/go/datastore"
 )
@@ -50,30 +48,6 @@ func NewFromFlags(ctx context.Context) (*Store, error) {
 	return &Store{dsClient: dsClient}, err
 }
 
-func saveInts(vs []int) string {
-	var buf []byte
-	for i, v := range vs {
-		if i > 0 {
-			buf = append(buf, ',')
-		}
-		buf = strconv.AppendInt(buf, int64(v), 10)
-	}
-	return string(buf)
-}
-
-func loadInts(s string) ([]int, error) {
-	parts := strings.Split(s, ",")
-	vs := make([]int, len(parts))
-	for i, part := range parts {
-		v, err := strconv.Atoi(part)
-		if err != nil {
-			return nil, err
-		}
-		vs[i] = v
-	}
-	return vs, nil
-}
-
 var ErrNotFound = datastore.ErrNoSuchEntity
 
 func noEntityOK(err error) error {
@@ -110,15 +84,49 @@ var (
 	errorType   = reflect.TypeOf((*error)(nil)).Elem()
 )
 
-func (store *Store) updateEntities(ctx context.Context, keys []*datastore.Key, update interface{}) (int, error) {
+func checkUpdateFunc(update interface{}) (reflect.Value, reflect.Type, error) {
 	updatev := reflect.ValueOf(update)
 	t := updatev.Type()
+	var err error
 	if t.Kind() != reflect.Func ||
 		t.NumIn() != 1 ||
 		t.NumOut() != 1 ||
 		t.Out(0) != errorType ||
 		t.In(0).Kind() != reflect.Ptr {
-		return 0, errors.New("update func not f(v *Type) error")
+		err = errors.New("update func not f(v *Type) error")
+	}
+	return updatev, t, err
+}
+
+func (store *Store) updateEntity(ctx context.Context, key *datastore.Key, update interface{}) error {
+	updatev, t, err := checkUpdateFunc(update)
+	if err != nil {
+		return err
+	}
+	_, err = store.dsClient.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
+		dst := reflect.New(t.In(0).Elem())
+		err := noEntityOK(tx.Get(key, dst.Interface()))
+		if err != nil {
+			return err
+		}
+		out := updatev.Call([]reflect.Value{dst})
+		err, _ = out[0].Interface().(error)
+		if err == errNoUpdate {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		_, err = tx.Put(key, dst.Interface())
+		return err
+	})
+	return err
+}
+
+func (store *Store) updateEntities(ctx context.Context, keys []*datastore.Key, update interface{}) (int, error) {
+	updatev, t, err := checkUpdateFunc(update)
+	if err != nil {
+		return 0, err
 	}
 
 	var mutationCount int

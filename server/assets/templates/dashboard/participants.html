@@ -24,7 +24,7 @@
         <td class="text-nowrap">{{.Council}}</td>
         <td class="text-nowrap">{{.District}}</td>
         <td class="text-nowrap">{{.UnitType}}{{if $.IsStaff}} {{.UnitNumber}}{{end}}</td>
-        {{- range call $.Data.SessionClasses . -}}<td class="text-right" {{if .Number}}title="{{.Number}}: {{.Title}}"{{end}}>
+        {{- range call $.Data.SessionClasses . -}}<td class="text-right" {{if .Number}}title="{{if .Instructor}}Instructor {{end}}{{.Number}}: {{.Title}}"{{end}}>
             {{- if .Instructor}}<b>{{end -}}
             {{- with .Number -}}
               <a href="/dashboard/classes/{{.}}">{{printf "%03d" .}}</a>

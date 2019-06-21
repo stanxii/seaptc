@@ -235,6 +235,7 @@ func cleanParticipant(p *participant) {
 
 	p.City = titleCase(p.City)
 	p.Email = strings.ToLower(p.Email)
+	p.RegisteredByEmail = strings.ToLower(p.RegisteredByEmail)
 	p.UnitNumber = strings.TrimLeft(unitNumberPat.FindString(p.UnitNumber), "0")
 
 	if i := strings.Index(p.District, " ("); i > 0 {

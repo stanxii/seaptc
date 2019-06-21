@@ -7,4 +7,5 @@ const (
 	Page_ContentType = "contentType"
 	Page_Data        = "data"
 	Page_Hash        = "hash"
+	Page_Path        = "_"
 )

@@ -1,6 +1,8 @@
 package model
 
-import "log"
+import (
+	"log"
+)
 
 type ClassMap map[int]*Class
 
@@ -12,17 +14,11 @@ func NewClassMap(classes []*Class) ClassMap {
 	return m
 }
 
-type SessionConflict struct {
-	*Class
-	Instructor bool
-}
-
 type SessionClass struct {
 	*Class
 	Session    int
 	Part       int
 	Instructor bool
-	Conflicts  []SessionConflict
 }
 
 var noClass = &Class{Title: "No Class", Length: 1}
@@ -32,29 +28,36 @@ func (classes ClassMap) ParticipantSessionClasses(p *Participant) []*SessionClas
 	for i := range sessionClasses {
 		sessionClasses[i] = &SessionClass{Session: i, Class: noClass}
 	}
-	setSessionClasses := func(classNumbers []int, instructor bool) {
-		for _, n := range classNumbers {
-			c := classes[n]
-			if c == nil {
-				log.Printf("unknown class %d for participant %v", n, p.ID)
-				continue
-			}
-			start, end := c.StartEnd()
-			if end >= len(sessionClasses) {
-				continue
-			}
-			for i := start; i <= end; i++ {
-				sc := sessionClasses[i]
-				if sc.Class.Number != 0 {
-					sc.Conflicts = append(sc.Conflicts, SessionConflict{Class: sc.Class, Instructor: sc.Instructor})
-				}
-				sc.Class = c
-				sc.Instructor = instructor
-				sc.Part = i - start + 1
-			}
+	for _, n := range p.Classes {
+		c := classes[n]
+		if c == nil {
+			log.Printf("unknown class %d for participant %v", n, p.ID)
+			continue
+		}
+		start, end := c.StartEnd()
+		if end >= len(sessionClasses) {
+			continue
+		}
+		for i := start; i <= end; i++ {
+			sc := sessionClasses[i]
+			sc.Class = c
+			sc.Part = i - start + 1
 		}
 	}
-	setSessionClasses(p.Classes, false)
-	// XXX Handle instructor classes
+	for _, ic := range p.InstructorClasses {
+		c := classes[ic.Class]
+		if c == nil {
+			log.Printf("unknown instructor class %d for participant %v", ic.Class, p.ID)
+			continue
+		}
+		if ic.Session < 0 || ic.Session >= NumSession {
+			log.Printf("bad instructor session %d for participant %v", ic.Session, p.ID)
+			continue
+		}
+		sc := sessionClasses[ic.Session]
+		sc.Class = c
+		sc.Part = c.Start() - ic.Session + 1
+		sc.Instructor = true
+	}
 	return sessionClasses
 }

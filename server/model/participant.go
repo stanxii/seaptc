@@ -6,6 +6,11 @@ import (
 	"strings"
 )
 
+type InstructorClass struct {
+	Session int `json:"session" datastore:"session"`
+	Class   int `json:"class" datastore:"class"`
+}
+
 //go:generate go run gogen.go -input participant.go -output gen_participant.go Participant
 
 type Participant struct {
@@ -41,18 +46,18 @@ type Participant struct {
 	StaffDescription    string `json:"staffDescription" datastore:"staffDescription" fields:"Import"` // instructor classes, midway org
 	OABanquet           bool   `json:"oaBanquet" datastore:"oaBanquet" fields:"Import,Print"`
 
-	InstructorClasses []int  `json:"instructorClasses" datastore:"instructorClasses,noindex" fields:"Print"`
-	Notes             string `json:"notes" datastore:"notes,noindex,omitempty" fields:""`
-	NoShow            bool   `json:"noShow" datastore:"noShow,noindex,omitempty" fields:""`
+	InstructorClasses []InstructorClass `json:"instructorClasses" datastore:"instructorClasses,omitempty" fields:"Print"`
+	Notes             string            `json:"notes" datastore:"notes,noindex,omitempty" fields:""`
+	NoShow            bool              `json:"noShow" datastore:"noShow,noindex,omitempty" fields:""`
 
 	// Hash computed from Doubleknot registration fields.
-	ImportHash string `json:"-" datastore:"importHash"`
+	ImportHash string `json:"importHash" datastore:"importHash"`
 
 	// Set to true when a Print field changes.
-	PrintForm bool `json:"-" datastore:"printForm"`
+	PrintForm bool `json:"printForm" datastore:"printForm"`
 
 	// Unique seven digit code assigned during import.
-	LoginCode string `json:"-" datastore:"loginCode"`
+	LoginCode string `json:"loginCode" datastore:"loginCode"`
 
 	sortName string
 }
@@ -109,6 +114,7 @@ func (p *Participant) Emails() []string {
 // Init initializes derived fields.
 func (p *Participant) Init() {
 	p.sortName = strings.ToLower(fmt.Sprintf("%s\n%s\n%s", p.LastName, p.FirstName, p.Suffix))
+	SortInstructorClasses(p.InstructorClasses)
 }
 
 func DefaultParticipantLess(a, b *Participant) bool {
@@ -148,4 +154,10 @@ func FilterParticipants(participants []*Participant, fn func(*Participant) bool)
 		}
 	}
 	return result
+}
+
+func SortInstructorClasses(classes []InstructorClass) {
+	sort.Slice(classes, func(i, j int) bool {
+		return classes[i].Session < classes[j].Session
+	})
 }

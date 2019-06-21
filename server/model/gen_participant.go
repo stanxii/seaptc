@@ -17,7 +17,6 @@ const (
 	Participant_District            = "district"
 	Participant_Email               = "email"
 	Participant_FirstName           = "firstName"
-	Participant_ID                  = "-"
 	Participant_ImportHash          = "importHash"
 	Participant_InstructorClasses   = "instructorClasses"
 	Participant_LastName            = "lastName"
@@ -159,7 +158,7 @@ func (x *Participant) CopyPrintFieldsTo(y *Participant) {
 func (x *Participant) EqualPrintFields(y *Participant) bool {
 	return equalIntSlice(x.Classes, y.Classes) &&
 		x.FirstName == y.FirstName &&
-		equalIntSlice(x.InstructorClasses, y.InstructorClasses) &&
+		equalInstructorClassSlice(x.InstructorClasses, y.InstructorClasses) &&
 		x.LastName == y.LastName &&
 		x.Nickname == y.Nickname &&
 		x.OABanquet == y.OABanquet &&

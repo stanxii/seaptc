@@ -31,3 +31,8 @@ indexes:
   properties:
   - name: "importHash"
   - name: "loginCode"
+- kind: "participant"
+  ancestor: yes
+  properties:
+  - name: "instructorClasses.class"
+  - name: "instructorClasses.session"

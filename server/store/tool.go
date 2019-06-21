@@ -64,6 +64,21 @@ func main() {
 		if err := s.UpdateParticipants(ctx); err != nil {
 			log.Fatal(err)
 		}
+	case "participant-get":
+		p, err := s.GetParticipant(ctx, flag.Arg(1))
+		if err != nil {
+			log.Fatal(err)
+		}
+		b, _ := json.MarshalIndent(p, "", "  ")
+		fmt.Printf("%s\n", b)
+	case "participant-set":
+		var p model.Participant
+		if err := json.NewDecoder(os.Stdin).Decode(&p); err != nil {
+			log.Fatal(err)
+		}
+		if err := s.DebugSetParticipant(ctx, &p); err != nil {
+			log.Fatal(err)
+		}
 	default:
 		log.Fatalf("Unknown command %q, commands are config-get, config-set", flag.Arg(0))
 	}

@@ -180,7 +180,6 @@ func (h *handler) ServeHTTP(response http.ResponseWriter, request *http.Request)
 			rc.logf("xsrf check failed for staffID=%q, particpiantID=%q", rc.staffID, rc.participantID)
 			rc.participantID = ""
 			rc.staffID = ""
-			fmt.Println(rc.request.Form)
 		}
 	}
 

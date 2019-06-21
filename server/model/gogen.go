@@ -31,8 +31,9 @@ type fieldInfo struct {
 }
 
 var equalExceptions = map[string]string{
-	"[]int":    "equalIntSlice(x.%s, y.%s)",
-	"[]string": "equalStringSlice(x.%s, y.%s)",
+	"[]int":             "equalIntSlice(x.%s, y.%s)",
+	"[]string":          "equalStringSlice(x.%s, y.%s)",
+	"[]InstructorClass": "equalInstructorClassSlice(x.%s, y.%s)",
 }
 
 func (f *fieldInfo) Equal() string {
@@ -178,7 +179,7 @@ func main() {
 				printer.Fprint(&buf, fset, f.Type)
 
 				field := &fieldInfo{Go: name.Name, Store: storeName, Type: buf.String()}
-				if field.Store != "_" && field.Store != "" {
+				if field.Store != "-" && field.Store != "" {
 					ti.Fields = append(ti.Fields, field)
 				}
 				if tag := tag.Get("fields"); tag != "" {
