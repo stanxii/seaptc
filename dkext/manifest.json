@@ -6,7 +6,8 @@
     "tabs",
     "storage",
     "http://localhost:8080/api/*",
-    "https://seaptc.org/api/*"
+    "https://seaptc.org/api/*",
+    "https://seattlebsa.doubleknot.com/*"
   ],
   "background":{
     "scripts":[
@@ -15,6 +16,7 @@
     ],
     "persistent":false
   },
+  "browser_action": {},
   "content_scripts":[
     {
       "matches":[

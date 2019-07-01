@@ -186,10 +186,13 @@ func (svc *apiService) Serve_api_uploadRegistrations(rc *requestContext) error {
 		return err
 	}
 
-	n, err := svc.store.ImportParticipants(rc.context(), participants)
+	summary, err := svc.store.ImportParticipants(rc.context(), participants)
 	if err != nil {
 		return err
 	}
 
-	return svc.respond(rc, map[string]interface{}{"count": n})
+	return svc.respond(rc, map[string]interface{}{
+		"count":   len(participants),
+		"summary": summary,
+	})
 }

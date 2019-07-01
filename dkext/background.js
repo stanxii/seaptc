@@ -1,8 +1,5 @@
 "use strict";
 
-const server = "https://seaptc.org";
-//const server = "http://localhost:8080";
-
 let sessionEventURLs = [];
 
 async function createNextSessionEventTab() {
@@ -19,7 +16,8 @@ async function createSessionEventTabs(sender, urls) {
 
 async function fetchClass(sender, number) {
   await createNextSessionEventTab();
-  let url = `${server}/api/sessionEvents/${number}`;
+  let settings = await chromeStorageSync.get(defaultSettings);
+  let url = new URL(`/api/sessionEvents/${number}`, settings.server);
   let response = await fetch(url);
   let m = await response.json();
   if (m.error) {
@@ -28,29 +26,44 @@ async function fetchClass(sender, number) {
   return m.result;
 }
 
-/*
-async function uploadExportFile(request, sender, sendResponse) {
-  let response = await fetch(request.file);
-  let blob = await response.blob();
+async function uploadExportFile(sender) {
+  let settings = await chromeStorageSync.get(defaultSettings);
+  let response = await fetch(settings.exportPage, {
+      cache: "no-cache",
+      referrer: "no-referrer",
+      redirect: "manual"
+    });
+  if (response.type === "opaqueredirect") {
+    throw new Error(`Could net get export page: redirect, possibly to login page`);
+  }
+  let text = await response.text();
+  let match = text.match(/\shref="(\/Handlers\/FileDownload.ashx\?FilePathName=[^"]*)"/);
+  if (!match) {
+    throw new Error(`Could not find download file on export page (bad setting for export page?)`);
+  }
+  let url = new URL(match[1], settings.exportPage);
+  response = await fetch(url);
+  let csv = await response.blob();
 
-  response = await fetch(request.server + "/api/uploadToken");
+  url = new URL("/api/uploadRegistrationsToken", settings.server);
+  response = await fetch(url);
   let token = await response.json();
 
   let formData = new FormData();
   formData.append(token.result.name, token.result.value);
-  formData.append("file", blob);
+  formData.append("file", csv);
 
-  response = await fetch(request.server + "/api/uploadRegistrations", {
-    method: "POST",
-    body: formData
-  });
-
-  let x = await response.json();
-  sendResponse(x);
+  url = new URL("/api/uploadRegistrations", settings.server);
+  response = await fetch(url, { method: "POST", body: formData });
+  return await response.json();
 }
-*/
 
-listenBackground({
+listen({
   "createSessionEventTabs": createSessionEventTabs,
-  "fetchClass": fetchClass
+  "fetchClass": fetchClass,
+  "uploadExportFile": uploadExportFile
 });
+
+chrome.browserAction.onClicked.addListener(
+  () => chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") }));
+

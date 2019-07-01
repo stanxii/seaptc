@@ -249,6 +249,18 @@ func (svc *dashboardService) Serve_dashboard_classes_(rc *requestContext) error 
 		for _, p := range data.Participants {
 			data.ParticipantEmails = append(data.ParticipantEmails, p.Emails()...)
 		}
+		sort.Strings(data.ParticipantEmails)
+		// Deduplicate
+		i := 0
+		prev := ""
+		for _, e := range data.ParticipantEmails {
+			if e != prev {
+				prev = e
+				data.ParticipantEmails[i] = e
+				i++
+			}
+		}
+		data.ParticipantEmails = data.ParticipantEmails[:i]
 	}
 
 	return rc.respond(svc.templates.Class, http.StatusOK, &data)
@@ -362,12 +374,12 @@ func (svc *dashboardService) Serve_dashboard_uploadRegistrations(rc *requestCont
 		return err
 	}
 
-	n, err := svc.store.ImportParticipants(rc.context(), participants)
+	summary, err := svc.store.ImportParticipants(rc.context(), participants)
 	if err != nil {
 		return err
 	}
 
-	return rc.redirect("/dashboard/admin", "info", "%d registrations loaded from file, %d modified", len(participants), n)
+	return rc.redirect("/dashboard/admin", "info", "Import %d records; ", len(participants), summary)
 }
 
 func (svc *dashboardService) Serve_dashboard_refreshClasses(rc *requestContext) error {

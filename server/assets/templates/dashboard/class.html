@@ -6,7 +6,6 @@
 <table class="mb-3 table-sm">
   <tr><th>Catalog</th><td><a href="/catalog/#c{{.Class.Number}}">/catalog/#c{{.Class.Number}}</a></td></tr>
   <tr><th>Session</th><td>{{add .Class.Start 1}}{{if gt .Class.Length 1}} &ndash; {{add .Class.End 1}}{{end}}</td></tr>
-  <tr><th>Location / Capacity</th><td>{{with .Class.Location}}{{.}}{{else}}Location not assigned{{end}} / {{.Class.Capacity}}</td></tr>
   {{with .Lunch}}
     <tr><th>Lunch</th><td>{{.Name}}{{with .Location}} @ {{.}}{{end}}</td></tr>
   {{end}}
@@ -14,10 +13,15 @@
     <tr><th>Instructor link</th><td><a href="{{.InstructorURL}}">{{.InstructorURL}}</a></td></tr>
   {{end}}
   {{if .InstructorView}}
+    <tr><th>Location / Capacity</th><td>{{with .Class.Location}}{{.}}{{else}}Location not assigned{{end}} / {{.Class.Capacity}}</td></tr>
     <tr><th>Instructors</th><td>{{range $i, $u := .Class.InstructorNames}}{{if $i}}, {{end}}{{.}}{{end}}</td></tr>
     <tr><th>Evaluation codes</th><td>{{range $i, $c := .Class.EvaluationCodes}}{{if $i}}, {{end}}{{.}}{{end}}</td></tr>
     <tr><th>Participants</th><td>{{len .Participants}}</td></tr>
-    <tr><th>Participant email</th><td>{{range $i, $e := .ParticipantEmails}}{{if $i}}, {{end}}{{$e}}{{end}}</td></tr>
+    <tr><th>Participant emails</th><td>
+      <a href="mailto:?bcc={{range $i, $e := .ParticipantEmails}}{{if $i}},{{end}}{{$e}}{{end}}">
+          {{range $i, $e := .ParticipantEmails}}{{if $i}}, {{end}}{{$e}}{{end}}
+      </a>
+    </td></tr>
   {{end}}
 </table>
 <p>

@@ -50,7 +50,24 @@ function callBackground(...nameAndArgs) {
   });
 }
 
-function listenBackground(handlers) {
+function callTab(tabID, ...nameAndArgs) {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.sendMessage(tabID, nameAndArgs, response => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError)
+      } else {
+        let [reason, value] = response;
+        if (reason !== null) {
+          reject(reason);
+        } else {
+          resolve(value);
+        }
+      }
+    });
+  });
+}
+
+function listen(handlers) {
   chrome.runtime.onMessage.addListener(([name, ...args], sender, sendResponse) => {
     const handler = handlers[name];
     if (!handler) {
@@ -68,4 +85,9 @@ function listenBackground(handlers) {
       });
     return true;
   });
+}
+
+const defaultSettings = {
+  exportPage: "",
+  server: "https://seaptc.org"
 }

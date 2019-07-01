@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/seaptc/server/model"
 	"golang.org/x/sync/errgroup"
@@ -261,11 +262,20 @@ func allocateUniqueLoginCode(codes map[string]bool) (string, error) {
 	return "", errors.New("could not assign login code")
 }
 
-func (store *Store) ImportParticipants(ctx context.Context, participants []*model.Participant) (int, error) {
+func joinComma(p []string, max int) string {
+	if len(p) <= max {
+		return strings.Join(p, ", ")
+	}
+	return fmt.Sprintf("%s and %d more", strings.Join(p[:max-1], ", "), len(p)-max+1)
+}
 
-	var mutationCount int
+func (store *Store) ImportParticipants(ctx context.Context, participants []*model.Participant) (string, error) {
+
+	summary := "No changes"
 
 	_, err := store.dsClient.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
+
+		var adds, updates []string
 
 		xhashes := make(map[string]string)
 		codes := make(map[string]bool)
@@ -304,6 +314,7 @@ func (store *Store) ImportParticipants(ctx context.Context, participants []*mode
 					return err
 				}
 				mutations = append(mutations, datastore.NewInsert(key, (*xParticipant)(p)))
+				adds = append(adds, p.LastName)
 				continue
 			}
 			delete(xhashes, id)
@@ -321,6 +332,7 @@ func (store *Store) ImportParticipants(ctx context.Context, participants []*mode
 			}
 			p.CopyImportFieldsTo((*model.Participant)(&xp))
 			mutations = append(mutations, datastore.NewUpdate(key, &xp))
+			updates = append(updates, p.LastName)
 		}
 
 		// Step 4: Delete participants missing from the imported data.
@@ -334,16 +346,32 @@ func (store *Store) ImportParticipants(ctx context.Context, participants []*mode
 			mutations = append(mutations, datastore.NewDelete(participantKey(id)))
 		}
 
-		mutationCount = len(mutations)
-		if mutationCount == 0 {
+		if len(mutations) == 0 {
 			return nil
 		}
 
 		_, err = tx.Mutate(mutations...)
-		return err
+		if err != nil {
+			return err
+		}
+
+		// Create summary of the change.
+		var parts []string
+		if len(adds) > 0 {
+			parts = append(parts, fmt.Sprintf("Added %s", joinComma(adds, 5)))
+		}
+		if len(updates) > 0 {
+			parts = append(parts, fmt.Sprintf("Updated %s", joinComma(updates, 5)))
+		}
+		if len(xhashes) > 0 {
+			parts = append(parts, fmt.Sprintf("Deleted %d", len(xhashes)))
+		}
+		summary = strings.Join(parts, "; ")
+
+		return nil
 	})
 
-	return mutationCount, err
+	return summary, err
 }
 
 func (store *Store) SetInstructorClasses(ctx context.Context, id string, classes []model.InstructorClass) error {
