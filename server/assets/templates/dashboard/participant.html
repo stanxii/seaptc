@@ -43,7 +43,7 @@
       {{range .}}
         <tr>
           <td>{{add .Session 1}}</td>
-          <td>{{if .Number}}<a href="/dashboard/classes/{{.Number}}">{{.Number}}</a>: {{end}}{{if .Instructor}}<b>Instructor</b> {{end}}{{.Title}}</td>
+          <td>{{if .Number}}<a href="/dashboard/classes/{{.Number}}">{{.NumberDotPart}}</a>: {{end}}{{if .Instructor}}<b>Instructor</b> {{end}}{{.Title}}</td>
         </tr>
       {{end}}
     </tbody>

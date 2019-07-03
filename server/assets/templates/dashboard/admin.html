@@ -31,12 +31,17 @@
   </div>
 </form>
 
+<p><b>Export:</b> <a href="/dashboard/exportParticipants">Participants</a>
+  | <a href="/dashboard/exportClasses">Classes</a>
+
 <p><b>Edit:</b> <a href="/dashboard/conference">Conference</a>
 
 <p><b>Forms:</b> <a href="/dashboard/reprintForms">Reprint</a>
+  | <a href="/dashboard/forms?options=batch">Batch Print</a>
+  | <a href="/dashboard/forms?options=auto">Auto Print</a>
   {{if .DevMode}}
-    | <a href="/dashboard/forms/debugFirst">Debug First</a>
-    | <a href="/dashboard/forms/debugLast">Debug Last</a>
+    | <a href="/dashboard/forms?options=first">Debug First</a>
+    | <a href="/dashboard/forms?options=last">Debug Last</a>
   {{end}}
 
 <p><b>Lunch:</b> <a href="/dashboard/lunchCount">Count</a>

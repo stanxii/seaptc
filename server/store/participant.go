@@ -68,11 +68,11 @@ type xParticipant model.Participant
 var deletedParticipantFields = map[string]bool{"needsPrint": true, "printSchedule": true}
 
 func (p *xParticipant) Load(ps []datastore.Property) error {
-	err := datastore.LoadStruct((*model.Participant)(p), filterProperties(ps, deletedParticipantFields))
+	err := datastore.LoadStruct(p.model(), filterProperties(ps, deletedParticipantFields))
 	if err != nil {
 		return err
 	}
-	(*model.Participant)(p).Init()
+	p.model().Init()
 	return nil
 }
 
@@ -82,17 +82,21 @@ func (p *xParticipant) LoadKey(k *datastore.Key) error {
 }
 
 func (p *xParticipant) Save() ([]datastore.Property, error) {
-	ps, err := datastore.SaveStruct((*model.Participant)(p))
+	ps, err := datastore.SaveStruct(p.model())
 	return ps, err
+}
+
+func (p *xParticipant) model() *model.Participant {
+	return (*model.Participant)(p)
 }
 
 func (store *Store) GetParticipant(ctx context.Context, id string) (*model.Participant, error) {
 	var xp xParticipant
 	err := store.dsClient.Get(ctx, participantKey(id), &xp)
-	return (*model.Participant)(&xp), err
+	return xp.model(), err
 }
 
-func (store *Store) GetParticipants(ctx context.Context, ids []string) ([]*model.Participant, error) {
+func (store *Store) GetParticipantsByID(ctx context.Context, ids []string) ([]*model.Participant, error) {
 	keys := make([]*datastore.Key, len(ids))
 	for i, id := range ids {
 		keys[i] = participantKey(id)
@@ -107,7 +111,7 @@ func (store *Store) GetParticipants(ctx context.Context, ids []string) ([]*model
 		if xp == nil {
 			continue
 		}
-		participants = append(participants, (*model.Participant)(xp))
+		participants = append(participants, xp.model())
 	}
 	return participants, err
 }
@@ -204,7 +208,7 @@ func (store *Store) GetAllParticipants(ctx context.Context) ([]*model.Participan
 
 	participants := make([]*model.Participant, len(xparticipants))
 	for i, xp := range xparticipants {
-		p := (*model.Participant)(xp)
+		p := xp.model()
 
 		p.Classes = cmap[p.ID]
 		sort.Ints(p.Classes)
@@ -213,6 +217,19 @@ func (store *Store) GetAllParticipants(ctx context.Context) ([]*model.Participan
 		model.SortInstructorClasses(p.InstructorClasses)
 
 		participants[i] = p
+	}
+	return participants, nil
+}
+
+func (store *Store) GetAllParticipantsFull(ctx context.Context) ([]*model.Participant, error) {
+	var xparticipants []*xParticipant
+	_, err := store.dsClient.GetAll(ctx, datastore.NewQuery(participantKind).Ancestor(conferenceEntityGroupKey), &xparticipants)
+	if err != nil {
+		return nil, err
+	}
+	participants := make([]*model.Participant, len(xparticipants))
+	for i, xp := range xparticipants {
+		participants[i] = xp.model()
 	}
 	return participants, nil
 }
@@ -226,23 +243,11 @@ func (store *Store) GetClassParticipants(ctx context.Context, classNumber int) (
 		return nil, err
 	}
 
-	xparticipants := make([]*xParticipant, len(keys))
-	err = noEntityOK(store.dsClient.GetMulti(ctx, keys, xparticipants))
-	if err != nil {
-		return nil, err
+	ids := make([]string, len(keys))
+	for i, key := range keys {
+		ids[i] = key.Name
 	}
-
-	participants := make([]*model.Participant, len(xparticipants))
-	i := 0
-	for _, xp := range xparticipants {
-		if xp.ID == "" {
-			// skip not found
-			continue
-		}
-		participants[i] = (*model.Participant)(xp)
-		i++
-	}
-	return participants[:i], nil
+	return store.GetParticipantsByID(ctx, ids)
 }
 
 func allocateUniqueLoginCode(codes map[string]bool) (string, error) {
@@ -327,10 +332,8 @@ func (store *Store) ImportParticipants(ctx context.Context, participants []*mode
 				return err
 			}
 			xp.ImportHash = hash
-			if !xp.PrintForm && !p.EqualPrintFields((*model.Participant)(&xp)) {
-				xp.PrintForm = true
-			}
-			p.CopyImportFieldsTo((*model.Participant)(&xp))
+			xp.PrintForm = xp.PrintForm || !p.EqualPrintFields(xp.model())
+			p.CopyImportFieldsTo(xp.model())
 			mutations = append(mutations, datastore.NewUpdate(key, &xp))
 			updates = append(updates, p.LastName)
 		}
@@ -374,9 +377,23 @@ func (store *Store) ImportParticipants(ctx context.Context, participants []*mode
 	return summary, err
 }
 
+func equalInstructorClasses(a []model.InstructorClass, b []model.InstructorClass) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func (store *Store) SetInstructorClasses(ctx context.Context, id string, classes []model.InstructorClass) error {
+	model.SortInstructorClasses(classes)
 	key := participantKey(id)
 	return store.updateEntity(ctx, key, func(xp *xParticipant) error {
+		xp.PrintForm = xp.PrintForm || !equalInstructorClasses(classes, xp.InstructorClasses)
 		xp.InstructorClasses = classes
 		return nil
 	})

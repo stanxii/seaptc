@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -720,109 +721,178 @@ func (svc *dashboardService) Serve_dashboard_reprintForms(rc *requestContext) er
 	return rc.respond(svc.templates.Reprint, http.StatusOK, &data)
 }
 
-var formSorts = map[string]func([]*model.Participant){
-	"debugFirst": func(participants []*model.Participant) {
-		sort.Slice(participants, func(i, j int) bool {
-			a := len(participants[i].NicknameOrFirstName())
-			b := len(participants[j].NicknameOrFirstName())
-			switch {
-			case a > b:
-				return true
-			case a < b:
-				return false
-			default:
-				return model.DefaultParticipantLess(participants[i], participants[j])
-			}
-		})
-	},
-	"debugLast": func(participants []*model.Participant) {
-		sort.Slice(participants, func(i, j int) bool {
-			a := len(participants[i].LastName)
-			if participants[i].Suffix != "" {
-				a += 1 + len(participants[i].Suffix)
-			}
-			b := len(participants[j].LastName)
-			if participants[j].Suffix != "" {
-				a += 1 + len(participants[j].Suffix)
-			}
-			switch {
-			case a > b:
-				return true
-			case a < b:
-				return false
-			default:
-				return model.DefaultParticipantLess(participants[i], participants[j])
-			}
-		})
-	},
+var formOptions = map[string]*struct {
+	filter bool
+	auto   int
+	limit  int
+	sort   func([]*model.Participant)
+}{
+	"auto": {
+		filter: true,
+		auto:   60,
+		limit:  50,
+		sort: func(participants []*model.Participant) {
+			sort.Slice(participants, func(i, j int) bool {
+				return model.DefaultParticipantLess(participants[j], participants[i])
+			})
+		}},
+	"batch": {
+		filter: true,
+		limit:  50,
+		sort: func(participants []*model.Participant) {
+			// Sort by staff role and name
+			sort.Slice(participants, func(i, j int) bool {
+				switch {
+				case participants[j].StaffRole < participants[i].StaffRole:
+					return true
+				case participants[j].StaffRole > participants[i].StaffRole:
+					return false
+				default:
+					return model.DefaultParticipantLess(participants[j], participants[i])
+				}
+			})
+		}},
+	"first": {
+		sort: func(participants []*model.Participant) {
+			// Descending by length of first name.
+			sort.Slice(participants, func(i, j int) bool {
+				a := len(participants[j].FirstName)
+				b := len(participants[i].FirstName)
+				switch {
+				case a < b:
+					return true
+				case a > b:
+					return false
+				default:
+					return model.DefaultParticipantLess(participants[i], participants[j])
+				}
+			})
+		}},
+	"last": {
+		sort: func(participants []*model.Participant) {
+			// Descending by length of last name.
+			sort.Slice(participants, func(i, j int) bool {
+				a := len(participants[j].LastName)
+				if participants[i].Suffix != "" {
+					a += 1 + len(participants[i].Suffix)
+				}
+				b := len(participants[i].LastName)
+				if participants[j].Suffix != "" {
+					a += 1 + len(participants[j].Suffix)
+				}
+				switch {
+				case a < b:
+					return true
+				case a > b:
+					return false
+				default:
+					return model.DefaultParticipantLess(participants[i], participants[j])
+				}
+			})
+		}},
 }
 
-func (svc *dashboardService) Serve_dashboard_forms_(rc *requestContext) error {
-	if !rc.isAdmin {
+func (svc *dashboardService) Serve_dashboard_forms(rc *requestContext) error {
+	if !rc.isStaff {
 		return httperror.ErrForbidden
 	}
-	what := strings.TrimPrefix(rc.request.URL.Path, "/dashboard/forms/")
-	if what == "" {
-		return httperror.ErrNotFound
-	}
 
-	ids := []string{what}
-	if sort := formSorts[what]; sort != nil {
-		participants, err := svc.store.GetAllParticipants(rc.context())
+	if rc.request.Method == "POST" {
+		rc.request.ParseForm()
+		ids := rc.request.Form["id"]
+		_, err := svc.store.SetParticipantsPrintForm(rc.context(), ids, false)
 		if err != nil {
 			return err
 		}
-		sort(participants)
-		ids = make([]string, len(participants))
-		for i := range participants {
-			ids[i] = participants[i].ID
-		}
 	}
-	return svc.renderForms(rc, ids)
+
+	options := formOptions[rc.request.FormValue("options")]
+	if options == nil {
+		options = formOptions["batch"]
+	}
+
+	participants, err := svc.store.GetAllParticipants(rc.context())
+	if err != nil {
+		return err
+	}
+
+	options.sort(participants)
+
+	if options.filter {
+		i := 0
+		for _, p := range participants {
+			if p.PrintForm {
+				participants[i] = p
+				i++
+			}
+		}
+		participants = participants[:i]
+	}
+
+	if options.limit > 0 && len(participants) > options.limit {
+		participants = participants[:options.limit]
+	}
+
+	ids := make([]string, len(participants))
+	for i := range participants {
+		ids[i] = participants[i].ID
+	}
+
+	return svc.renderForms(rc, options.auto, !options.filter, ids)
 }
 
-func (svc *dashboardService) renderForms(rc *requestContext, ids []string) error {
-
-	var (
-		g            errgroup.Group
-		participants []*model.Participant
-		conf         *model.Conference
-		classes      []*model.Class
-	)
-
-	g.Go(func() error {
-		var err error
-		participants, err = svc.store.GetParticipants(rc.context(), ids)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		conf, err = svc.store.GetConference(rc.context())
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		classes, err = svc.store.GetAllClasses(rc.context())
-		return err
-	})
-
-	if err := g.Wait(); err != nil {
-		return err
+func (svc *dashboardService) Serve_dashboard_forms_(rc *requestContext) error {
+	if !rc.isStaff {
+		return httperror.ErrForbidden
 	}
+	id := strings.TrimPrefix(rc.request.URL.Path, "/dashboard/forms/")
+	if id == "" {
+		return httperror.ErrNotFound
+	}
+	return svc.renderForms(rc, 0, true, []string{id})
+}
+
+func (svc *dashboardService) renderForms(rc *requestContext, auto int, preview bool, ids []string) error {
 
 	var data = struct {
 		Participants   []*model.Participant
 		Conference     *model.Conference
 		Lunch          interface{}
 		SessionClasses interface{}
+		Auto           int
+		Preview        bool
 	}{
-		participants,
-		conf,
-		conf.ParticipantLunch,
-		model.NewClassMap(classes).ParticipantSessionClasses,
+		Auto:    auto,
+		Preview: preview,
 	}
+
+	if len(ids) > 0 {
+		var g errgroup.Group
+
+		g.Go(func() error {
+			var err error
+			data.Participants, err = svc.store.GetParticipantsByID(rc.context(), ids)
+			return err
+		})
+
+		g.Go(func() error {
+			conf, err := svc.store.GetConference(rc.context())
+			data.Conference = conf
+			data.Lunch = conf.ParticipantLunch
+			return err
+		})
+
+		g.Go(func() error {
+			classes, err := svc.store.GetAllClasses(rc.context())
+			data.SessionClasses = model.NewClassMap(classes).ParticipantSessionClasses
+			return err
+		})
+
+		if err := g.Wait(); err != nil {
+			return err
+		}
+	}
+
 	return rc.respond(svc.templates.Form, http.StatusOK, &data)
 }
 
@@ -864,5 +934,137 @@ func (svc *dashboardService) Serve_dashboard_vcard(rc *requestContext) error {
 	}
 	rc.response.Header().Set("Content-Type", "image/png")
 	rc.response.Write(code.PNG())
+	return nil
+}
+
+func (svc *dashboardService) Serve_dashboard_exportClasses(rc *requestContext) error {
+	if !rc.isAdmin {
+		return httperror.ErrForbidden
+	}
+
+	classes, err := svc.store.GetAllClassesFull(rc.context())
+	if err != nil {
+		return err
+	}
+
+	rc.response.Header().Set("Content-Type", "text/csv")
+	rc.response.Header().Set("Content-Disposition", `attachment; filename="classes.csv"`)
+
+	w := csv.NewWriter(rc.response)
+	w.Write([]string{
+		"Number",
+		"Length",
+		"Title",
+		"Instructors",
+		"InstructorEmails",
+	})
+
+	for _, c := range classes {
+		w.Write([]string{
+			fmt.Sprintf("%d", c.Number),
+			fmt.Sprintf("%d", c.Length),
+			c.Title,
+			strings.Join(c.InstructorNames, ", "),
+			strings.Join(c.InstructorEmails, ", "),
+		})
+	}
+	w.Flush()
+	return nil
+}
+
+func (svc *dashboardService) Serve_dashboard_exportParticipants(rc *requestContext) error {
+	if !rc.isAdmin {
+		return httperror.ErrForbidden
+	}
+
+	var (
+		g            errgroup.Group
+		participants []*model.Participant
+		m            model.ClassMap
+	)
+
+	g.Go(func() error {
+		classes, err := svc.store.GetAllClasses(rc.context())
+		m = model.NewClassMap(classes)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		participants, err = svc.store.GetAllParticipantsFull(rc.context())
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	rc.response.Header().Set("Content-Type", "text/csv")
+	rc.response.Header().Set("Content-Disposition", `attachment; filename="participants.csv"`)
+
+	w := csv.NewWriter(rc.response)
+	record := []string{
+		"ID",
+		"Reg#",
+		"Name",
+		"Type",
+		"Email",
+		"Email2",
+		"Phone",
+		"City",
+		"State",
+		"Zip",
+		"StaffRole",
+		"Council",
+		"District",
+		"Unit",
+		"Marketing",
+		"ScoutingYears",
+		"BSA#",
+		"Banquet",
+		"No Show",
+		"Staff Notes",
+	}
+	for i := 0; i < model.NumSession; i++ {
+		record = append(record, fmt.Sprintf("class_%d", i+1), fmt.Sprintf("instr_%d", i+1))
+	}
+	w.Write(record)
+
+	for _, p := range participants {
+		sessionClasses := m.ParticipantSessionClasses(p)
+
+		var email2 string
+		if p.Youth && p.RegisteredByEmail != p.Email {
+			email2 = p.RegisteredByEmail
+		}
+
+		record := []string{
+			p.ID,
+			p.RegistrationNumber,
+			p.Name(),
+			p.Type(),
+			p.Email,
+			email2,
+			p.Phone,
+			p.City,
+			p.State,
+			p.Zip,
+			p.StaffRole,
+			p.Council,
+			p.District,
+			p.Unit(),
+			p.Marketing,
+			p.ScoutingYears,
+			p.BSANumber,
+			strconv.FormatBool(p.OABanquet),
+			strconv.FormatBool(p.NoShow),
+			strings.Replace(p.Notes, "\n", " ", -1),
+		}
+		for _, c := range sessionClasses {
+			record = append(record, c.NumberDotPart(), strconv.FormatBool(c.Instructor))
+		}
+		w.Write(record)
+	}
+	w.Flush()
 	return nil
 }

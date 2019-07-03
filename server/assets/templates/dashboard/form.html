@@ -1,6 +1,6 @@
-{{define "ROOT"}}{{with $.Data}}{{$year := .Conference.Date.Format "2006"}}<!DOCTYPE html>
-<html> 
-<head> 
+{{define "ROOT"}}{{with $.Data}}<!DOCTYPE html>
+<html>
+<head>
 <link rel="stylesheet" href="{{staticFile "/normalize.css"}}">
 <style>
 
@@ -237,7 +237,7 @@ div {
 .scheduleSmall {
   font-size: 10pt;
 }
-  
+
 .sideName {
   position: absolute;
   bottom: 0;
@@ -253,7 +253,7 @@ div {
 .sideNameSmall {
   font-size: 13pt;
 }
-  
+
 .sideName div:last-child {
   font-size: 12pt;
 }
@@ -335,11 +335,52 @@ div {
 <body>
 
 <div id="screenHeader">
-  <p><a href="https://www.google.com/chrome">Google Chrome</a> is required for form printing and preview. 
-  {{with $.FlashMessage}}{{.Kind}}: {{.Message}}{{end}}
+  {{if .Preview}}
+     <p><a href="https://www.google.com/chrome">Google Chrome</a> is required for form preview and printing.
+    {{with $.Request.Header.Get "Referer"}}<p><a href="{{.}}"><button>Done</button></a>{{end}}
+  {{else}}
+    {{if .Participants}}
+      <button onclick="window.print()">Print</button>
+      <form id="clearAndRefresh" style="display:inline;" method="POST">
+        {{$.XSRFToken $.Request.URL.Path}}
+        {{range .Participants -}}
+          <input type="hidden" name="id" value="{{.ID}}">
+          <input type="hidden" name="prev" value="{{.Name}}">
+        {{- end}}
+        <button type="submit">Clear print flags and refresh</button>
+      </form>
+      {{if .Auto}}
+        <script>
+          document.onreadystatechange = () => {
+            if (document.readyState === "complete") {
+              window.print();
+            }
+          };
+          window.onafterprint = () => { document.getElementById("clearAndRefresh").submit(); };
+        </script>
+      {{end}}
+    {{else}}
+      <form id="refresh" style="display:inline;" method="POST">
+        {{$.XSRFToken $.Request.URL.Path}}
+        {{range index $.Request.Form "prev"}}<input type="hidden" name="prev" value="{{.}}">{{end}}
+        <button type="submit">Refresh</button>
+      </form>
+      <a href="/dashboard/admin"><button>Cancel</button></a>
+      {{if .Auto}}
+        <script>
+          window.setTimeout(() => document.getElementById("refresh").submit(), 1000 * {{.Auto}});
+        </script>
+      {{end}}
+      {{with index $.Request.Form "prev"}}
+        <p>Previous print batch:
+        <ul>{{range .}}<li>{{.}}{{end}}</ul>
+      {{end}}
+    {{end}}
+  {{end}}
 </div>
 
 {{range $p := .Participants}}
+{{$year := $.Data.Conference.Date.Format "2006"}}
 {{$sessionClasses := call $.Data.SessionClasses $p}}
 
 <div class="page">
@@ -395,7 +436,7 @@ div {
     {{template "feedbackItem" "Facilities and logistics"}}
     {{template "feedbackItem" "Signage and wayfinding"}}
     {{template "feedbackItem" "Mobile website (seaptc.org)"}}
-  </table> 
+  </table>
 
 </div>
 
@@ -463,7 +504,7 @@ div {
   <div class="p1Body">
 
     <div class="scheduleTitle">{{.Firsts}} Conference Schedule</div>
-    <table class="schedule"> 
+    <table class="schedule">
       <colgroup>
         <col width="0%">
         <col width="100%">

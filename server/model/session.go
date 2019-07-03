@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"log"
 )
 
@@ -19,6 +20,13 @@ type SessionClass struct {
 	Session    int
 	Part       int
 	Instructor bool
+}
+
+func (sc *SessionClass) NumberDotPart() string {
+	if sc.Length <= 1 {
+		return fmt.Sprintf("%d", sc.Number)
+	}
+	return fmt.Sprintf("%d.%d", sc.Number, sc.Part)
 }
 
 var noClass = &Class{Title: "No Class", Length: 1}
@@ -56,7 +64,7 @@ func (classes ClassMap) ParticipantSessionClasses(p *Participant) []*SessionClas
 		}
 		sc := sessionClasses[ic.Session]
 		sc.Class = c
-		sc.Part = c.Start() - ic.Session + 1
+		sc.Part = ic.Session - c.Start() + 1
 		sc.Instructor = true
 	}
 	return sessionClasses

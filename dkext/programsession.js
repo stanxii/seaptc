@@ -1,7 +1,7 @@
 // Content script for "Manage a Program Session".
 "use strict";
 
-(() => {
+function setup() {
   let title = document.querySelector("#pagetitlediv table tbody tr:first-of-type th");
   if (!title || (title.innerText.toUpperCase() !== "MANAGE A PROGRAM SESSION")) {
     console.log("DKE: could not find manage program session title on page");
@@ -63,4 +63,6 @@
       return false
     };
   }
-})();
+}
+
+setup();

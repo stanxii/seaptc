@@ -177,7 +177,7 @@ function getClassNumber() {
   return s.substr(0, 3);
 }
 
-(() => {
+function setup() {
   let title = document.querySelector("#pagetitlediv table tbody tr:first-of-type th");
   if (!title || (title.innerText.toUpperCase() !== "CREATE AND MODIFY A SESSION EVENT")) {
     console.log("DKE: could not find session event title on page");
@@ -207,4 +207,6 @@ function getClassNumber() {
     showMessage("");
   }
 
-})();
+}
+
+setup();

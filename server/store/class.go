@@ -31,11 +31,11 @@ var deletedClassFields = map[string]bool{
 }
 
 func (c *xClass) Load(ps []datastore.Property) error {
-	err := datastore.LoadStruct((*model.Class)(c), filterProperties(ps, deletedClassFields))
+	err := datastore.LoadStruct(c.model(), filterProperties(ps, deletedClassFields))
 	if err != nil {
 		return err
 	}
-	(*model.Class)(c).Init()
+	c.model().Init()
 	return nil
 }
 
@@ -45,8 +45,12 @@ func (c *xClass) LoadKey(k *datastore.Key) error {
 }
 
 func (c *xClass) Save() ([]datastore.Property, error) {
-	ps, err := datastore.SaveStruct((*model.Class)(c))
+	ps, err := datastore.SaveStruct(c.model())
 	return ps, err
+}
+
+func (c *xClass) model() *model.Class {
+	return (*model.Class)(c)
 }
 
 func (store *Store) GetClass(ctx context.Context, number int) (*model.Class, error) {
@@ -55,7 +59,7 @@ func (store *Store) GetClass(ctx context.Context, number int) (*model.Class, err
 	}
 	var c xClass
 	err := store.dsClient.Get(ctx, classKey(number), &c)
-	return (*model.Class)(&c), err
+	return c.model(), err
 }
 
 var allClassesQuery = datastore.NewQuery(classKind).Ancestor(conferenceEntityGroupKey).Project(
@@ -73,7 +77,7 @@ func (store *Store) GetAllClasses(ctx context.Context) ([]*model.Class, error) {
 	}
 	classes := make([]*model.Class, len(xclasses))
 	for i, xc := range xclasses {
-		classes[i] = (*model.Class)(xc)
+		classes[i] = xc.model()
 	}
 	return classes, nil
 }
@@ -86,7 +90,7 @@ func (store *Store) GetAllClassesFull(ctx context.Context) ([]*model.Class, erro
 	}
 	classes := make([]*model.Class, len(xclasses))
 	for i, xc := range xclasses {
-		classes[i] = (*model.Class)(xc)
+		classes[i] = xc.model()
 	}
 	return classes, nil
 }
@@ -146,7 +150,7 @@ func (store *Store) ImportClasses(ctx context.Context, classes []*model.Class) (
 				return err
 			}
 			xc.ImportHash = hash
-			c.CopyImportFieldsTo((*model.Class)(&xc))
+			c.CopyImportFieldsTo(xc.model())
 			mutations = append(mutations, datastore.NewUpdate(key, &xc))
 		}
 

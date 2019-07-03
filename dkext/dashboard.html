@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+</head>
+<body>
+  <div class="container py-3" id="top">
+
+  <div class="mb-3">
+    <button class="btn btn-secondary" id="upload">Upload export file</button>
+  </div>
+
+  <div id="alert" class="alert alert-dismissible fade show mb-3 d-none">
+    <span id="alertText"></span>
+    <button id="alertClose" type="button" class="close">&times;</button>
+  </div>
+
+  <div class="card card-body bg-light mb-3">
+    <h5 class="card-title">Settings</h5>
+    <form>
+      <div class="form-group">
+        <label for="server">Server</label>
+        <input type="text" class="form-control" id="server" placeholder="http://host:port">
+      </div>
+      <div class="form-group">
+        <label for="exportPage">Export Page</label>
+        <input type="text" class="form-control" id="exportPage">
+      </div>
+      <button disabled id="saveSettings" class="btn btn-secondary">Save</a>
+    </form>
+  </div>
+</div>
+<script src="common.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>
