@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/garyburd/web/cookie"
@@ -23,8 +22,6 @@ import (
 type application struct {
 	devMode bool
 	store   *store.Store
-
-	nextRequestID int64 // incremented on each request, used in log output
 
 	config *model.AppConfig
 
@@ -148,7 +145,6 @@ func (h *handler) ServeHTTP(response http.ResponseWriter, request *http.Request)
 		application: a,
 		response:    response,
 		request:     request,
-		logPrefix:   fmt.Sprintf("%06d ", atomic.AddInt64(&a.nextRequestID, 1)),
 	}
 
 	if err := a.staffIDCodec.Decode(rc.request, &rc.staffID); err != nil {
@@ -174,7 +170,7 @@ func (h *handler) ServeHTTP(response http.ResponseWriter, request *http.Request)
 		rc.isStaff = rc.isAdmin || a.isStaff(rc.context(), rc.staffID)
 	}
 
-	rc.logf("request: %s %s %s", rc.request.Method, rc.request.URL.Path, rc.staffID)
+	rc.logf("staffID=%q, participantID=%q", rc.staffID, rc.participantID)
 	err := h.f(&rc)
 	if err != nil {
 		h.respondError(&rc, err)
@@ -182,12 +178,18 @@ func (h *handler) ServeHTTP(response http.ResponseWriter, request *http.Request)
 }
 
 func (h *handler) respondError(rc *requestContext, err error) {
-	rc.logf("resp error: %+v", err)
 	e := httperror.Convert(err)
+
+	severity := "NOTICE"
+	if e.Status >= 500 {
+		severity = "ERROR"
+	}
+	logf(severity, rc.request.Header, "%d: %s, %v", e.Status, e.Message, e.Err)
+
 	if t := h.svc.errorTemplate(); t != nil {
 		err := rc.respond(h.svc.errorTemplate(), e.Status, e)
 		if err != nil {
-			rc.logf("error rendering error template: %v", err)
+			logf("ERROR", rc.request.Header, "error rendering error template: %v", err)
 		} else {
 			return
 		}
@@ -228,10 +230,6 @@ func (rc *requestContext) setFlashMessage(kind, format string, args ...interface
 	}
 }
 
-func (rc *requestContext) logf(format string, args ...interface{}) {
-	log.Printf(rc.logPrefix+format, args...)
-}
-
 func (rc *requestContext) respond(t *templates.Template, status int, data interface{}) error {
 	return t.WriteResponse(rc.response, rc.request, status, &templateContext{rc: rc, Data: data})
 }
@@ -239,4 +237,8 @@ func (rc *requestContext) respond(t *templates.Template, status int, data interf
 func (rc *requestContext) xsrfToken(path string) string {
 	id := fmt.Sprintf("%s\000%s", rc.staffID, rc.participantID)
 	return xsrftoken.Generate(rc.application.config.XSRFKey, id, path)
+}
+
+func (rc *requestContext) logf(format string, args ...interface{}) {
+	logf("INFO", rc.request.Header, format, args...)
 }
