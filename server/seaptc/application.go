@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -32,14 +31,10 @@ type application struct {
 	flashCodec         *cookie.Codec
 	staffIDCodec       *cookie.Codec
 	participantIDCodec *cookie.Codec
+	debugTimeCodec     *cookie.Codec
 
-	adminIDs map[string]bool
-
-	staffIDs struct {
-		mu        sync.Mutex
-		value     map[string]bool
-		refreshed time.Time
-	}
+	adminIDs       map[string]bool
+	conferenceDate time.Time
 }
 
 type applicationService interface {
@@ -61,10 +56,11 @@ func newApplication(ctx context.Context, st *store.Store, devMode bool, assetDir
 	}
 
 	a := application{
-		devMode:  devMode,
-		store:    st,
-		config:   config,
-		adminIDs: make(map[string]bool),
+		devMode:        devMode,
+		store:          st,
+		config:         config,
+		conferenceDate: time.Date(config.Year, time.Month(config.Month), config.Day, 0, 0, 0, 0, model.TimeLocation),
+		adminIDs:       make(map[string]bool),
 		flashCodec: cookie.NewCodec("f",
 			cookie.WithSecure(!devMode)),
 		staffIDCodec: cookie.NewCodec("s",
@@ -72,15 +68,16 @@ func newApplication(ctx context.Context, st *store.Store, devMode bool, assetDir
 			cookie.WithHMACKeys(hmacKeys),
 			cookie.WithSecure(!devMode)),
 		participantIDCodec: cookie.NewCodec("i",
-			cookie.WithMaxAge(24*time.Hour),
+			cookie.WithMaxAge(7*24*time.Hour),
 			cookie.WithHMACKeys(hmacKeys),
 			cookie.WithSecure(!devMode)),
+		debugTimeCodec: cookie.NewCodec("t",
+			cookie.WithMaxAge(time.Hour)),
 	}
 
 	for _, id := range a.config.AdminIDs {
 		a.adminIDs[id] = true
 	}
-	a.staffIDs.value = make(map[string]bool)
 
 	tm := newTemplateManager(assetDir)
 	mux := http.NewServeMux()
@@ -124,24 +121,13 @@ func newApplication(ctx context.Context, st *store.Store, devMode bool, assetDir
 	return mux, nil
 }
 
-func (a *application) getStaffIDs(ctx context.Context) map[string]bool {
-	a.staffIDs.mu.Lock()
-	defer a.staffIDs.mu.Unlock()
-	if time.Since(a.staffIDs.refreshed) < 10*time.Minute {
-		return a.staffIDs.value
-	}
-	conf, err := a.store.GetConference(ctx)
+func (a *application) isStaff(ctx context.Context, staffID string) bool {
+	conf, err := a.store.GetCachedConference(ctx)
 	if err != nil {
 		log.Println("error getting conference for staffIDs: %v", err)
-		return a.staffIDs.value
+		return false
 	}
-	v := make(map[string]bool)
-	for _, f := range strings.Fields(conf.StaffIDs) {
-		v[strings.ToLower(f)] = true
-	}
-	a.staffIDs.refreshed = time.Now()
-	a.staffIDs.value = v
-	return v
+	return conf.IsStaff(staffID)
 }
 
 type handler struct {
@@ -169,43 +155,45 @@ func (h *handler) ServeHTTP(response http.ResponseWriter, request *http.Request)
 		rc.staffID = ""
 	}
 
-	if err := a.participantIDCodec.Decode(rc.request, &rc.participantID); err != nil {
+	if err := a.participantIDCodec.Decode(rc.request, &rc.participantID, &rc.participantName); err != nil {
 		rc.participantID = ""
 	}
 
-	// Clobber ids if XSRF token is not valid.
+	// Check for XSRF
 	if request.Method != "HEAD" && request.Method != "GET" {
 		id := fmt.Sprintf("%s\000%s", rc.staffID, rc.participantID)
 		if !xsrftoken.Valid(request.FormValue("_xsrftoken"), rc.application.config.XSRFKey, id, request.URL.Path) {
 			rc.logf("xsrf check failed for staffID=%q, particpiantID=%q", rc.staffID, rc.participantID)
-			rc.participantID = ""
-			rc.staffID = ""
+			h.respondError(&rc, httperror.ErrForbidden)
+			return
 		}
 	}
 
 	if rc.staffID != "" {
 		rc.isAdmin = a.adminIDs[rc.staffID]
-		rc.isStaff = rc.isAdmin || a.getStaffIDs(rc.context())[rc.staffID]
+		rc.isStaff = rc.isAdmin || a.isStaff(rc.context(), rc.staffID)
 	}
 
 	rc.logf("request: %s %s %s", rc.request.Method, rc.request.URL.Path, rc.staffID)
-
 	err := h.f(&rc)
-
 	if err != nil {
-		rc.logf("resp error: %+v", err)
-		e := httperror.Convert(err)
-		if t := h.svc.errorTemplate(); t != nil {
-			err := rc.respond(h.svc.errorTemplate(), e.Status, e)
-			if err != nil {
-				rc.logf("error rendering error template: %v", err)
-			} else {
-				return
-			}
-		}
-		rc.response.Header().Set("Content-Type", "text/plain")
-		http.Error(rc.response, e.Message, e.Status)
+		h.respondError(&rc, err)
 	}
+}
+
+func (h *handler) respondError(rc *requestContext, err error) {
+	rc.logf("resp error: %+v", err)
+	e := httperror.Convert(err)
+	if t := h.svc.errorTemplate(); t != nil {
+		err := rc.respond(h.svc.errorTemplate(), e.Status, e)
+		if err != nil {
+			rc.logf("error rendering error template: %v", err)
+		} else {
+			return
+		}
+	}
+	rc.response.Header().Set("Content-Type", "text/plain")
+	http.Error(rc.response, e.Message, e.Status)
 }
 
 type requestContext struct {
@@ -218,7 +206,7 @@ type requestContext struct {
 	staffID          string
 	isAdmin, isStaff bool
 
-	participantID string
+	participantID, participantName string
 }
 
 func (rc *requestContext) redirect(path string, flashKind string, flashFormat string, flashArgs ...interface{}) error {

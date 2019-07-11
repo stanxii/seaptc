@@ -28,6 +28,7 @@ func (store *Store) GetConference(ctx context.Context) (*model.Conference, error
 
 func (store *Store) SetConference(ctx context.Context, conf *model.Conference) error {
 	_, err := store.dsClient.Put(ctx, miscKey("conference"), conf)
+	store.conferenceCache.clear()
 	return err
 }
 

@@ -8,21 +8,6 @@
   {{$.XSRFToken $.Request.URL.Path}}
 
   <div class="form-group">
-    <label>Year / Month / Day</label>
-    <div class="form-row">
-      <div class="col">
-        <input type="text" class="form-control{{isInvalid .Invalid "year"}}" placeholder="Year" name="year" value="{{.Form.Get "year"}}">
-      </div>
-      <div class="col">
-        <input type="text" class="form-control{{isInvalid .Invalid "month"}}" placeholder="Month" name="month" value="{{.Form.Get "month"}}">
-      </div>
-      <div class="col">
-        <input type="text" class="form-control{{isInvalid .Invalid "day "}}" placeholder="Day" name="day" value="{{.Form.Get "day"}}">
-      </div>
-    </div>
-  </div>
-
-  <div class="form-group">
     <label>Registration URL</label>
     <input type="text" class="form-control" name="registrationURL" value="{{.Conference.RegistrationURL}}">
   </div>
@@ -33,13 +18,13 @@
   </div>
 
   <div class="form-group">
-    <label>No Class Description</label>
+    <label>No Class description</label>
     <textarea class="form-control" name="noClassDescription" rows="3">{{.Conference.NoClassDescription}}</textarea>
     <small class="form-text text-muted">First line is title, remaining lines are description.</small>
   </div>
 
   <div class="form-group">
-    <label>OA Banquet Description</label>
+    <label>OA Banquet description</label>
     <textarea class="form-control" name="oaBanquetDescription" rows="3">{{.Conference.OABanquetDescription}}</textarea>
     <small class="form-text text-muted">First line is title, remaining lines are description.</small>
   </div>
@@ -56,7 +41,19 @@
     <small class="form-text text-muted">Email addresses separated by whitespace.</small>
   </div>
 
+  <div class="form-group">
+    <label>Opening location</label>
+    <input type="text" class="form-control" name="openingLocation" value="{{.Conference.OpeningLocation}}">
+  </div>
+
+  <div class="form-group">
+    <label>OA banquet location</label>
+    <input type="text" class="form-control" name="oaBanquetLocation" value="{{.Conference.OABanquetLocation}}">
+  </div>
+
   <button type="submit" name="submit" value="submit" class="btn btn-primary">Submit</button>
   <a class="btn btn-secondary" href="/dashboard/admin">Cancel</a>
+
 </form>
+
 {{end}}{{end}}

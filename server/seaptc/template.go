@@ -12,10 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/garyburd/web/templates"
-	"github.com/seaptc/server/model"
 )
 
 // templateContext is the root value passed to template execute.
@@ -26,9 +24,13 @@ type templateContext struct {
 	Data interface{}
 }
 
-func (tc *templateContext) Request() *http.Request { return tc.rc.request }
-func (tc *templateContext) IsAdmin() bool          { return tc.rc.isAdmin }
-func (tc *templateContext) IsStaff() bool          { return tc.rc.isStaff }
+func (tc *templateContext) Request() *http.Request  { return tc.rc.request }
+func (tc *templateContext) IsAdmin() bool           { return tc.rc.isAdmin }
+func (tc *templateContext) IsStaff() bool           { return tc.rc.isStaff }
+func (tc *templateContext) ParticipantName() string { return tc.rc.participantName }
+func (tc *templateContext) ConferenceDate(fmt string) string {
+	return tc.rc.application.conferenceDate.Format(fmt)
+}
 
 func (tc *templateContext) FlashMessage() interface{} {
 	rc := tc.rc
@@ -98,9 +100,6 @@ func newTemplateManager(assetDir string) *templates.Manager {
 					result += v
 				}
 				return result
-			},
-			"fmtTime": func(layout string, t time.Time) string {
-				return t.In(model.TimeLocation).Format(layout)
 			},
 			"truncate": func(s string, n int) string {
 				i := 0

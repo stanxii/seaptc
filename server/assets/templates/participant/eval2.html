@@ -1,0 +1,89 @@
+{{define "title"}}PTC Evaluation{{end}}
+{{define "body"}}{{with .Data}}
+
+{{if .Invalid}}<div class="alert alert-danger" role="alert"><strong>Eek!</strong> Fix the errors noted below and try again. </div>{{end}}
+
+<form method="POST" class="mb-3">
+  {{$.XSRFToken $.Request.URL.Path}}
+  <input type="hidden" name="evaluationCode" value="{{.Form.Get "evaluationCode"}}">
+
+  {{if .EvaluateClass}}
+    {{with .SessionClass}}
+      <h5>{{.Number}}: {{.ShortTitle}}{{.IofN}}</h5>
+    {{end}}
+    <p>Evaluate your session {{add .SessionClass.Session 1}} class. The items marked with a * are required.
+    {{template "rating" args . "knowledge" "Instructor's knowledge of course material *" "Provide a rating for the instructor's knowledge of course material."}}
+    {{template "rating" args . "presentation" "Presentation of material *" "Provide a rating for the presentation of material."}}
+    {{template "rating" args . "usefulness" "Usefulness of topic *" "Provide a rating for the usefulness of topic."}}
+    {{template "rating" args . "overall" "Session overall *" "Provide a rating for the session overall."}}
+    {{template "textarea" args . "comments" "Comments about the session"}}
+    <hr>
+  {{end}}
+
+  {{if .EvaluateConference}}
+    <h5>Conference</h5>
+    {{if .EvaluateClass}}
+      <p>This is the last class of the day. Evaluate the entire Program and Training Conference.
+     {{else}}
+      <p>Evaluate the entire Program and Training Conference. Wait until you
+      are done for the day before completing this evaluation.  
+      <p><a href="/" class="btn btn-secondary">I am not done for the day</a>
+    {{end}}
+    {{template "rating" args . "experience" "Overall conference experience" ""}}
+    {{template "rating" args . "promotion" "Pre-event promotion" ""}}
+    {{template "rating" args . "registration" "Online registration (if applicable)" ""}}
+    {{template "rating" args . "checkin" "On-site check-in process" ""}}
+    {{template "rating" args . "midway" "Midway" ""}}
+    {{template "rating" args . "lunch" "Lunch" ""}}
+    {{template "rating" args . "facilities" "Facilities" ""}}
+    {{template "rating" args . "website" "Mobile website (seaptc.org)" ""}}
+    {{template "rating" args . "signageWayfinding" "Signage and wayfinding" ""}}
+    {{template "text" args . "learnTopics" "What NEW subject should we add to PTC next year?"}}
+    {{template "text" args . "teachTopics" "Is there a subject you would like to TEACH at next year's PTC?"}}
+    {{template "textarea" args . "overallComments" "Additional Feedback"}}
+    <hr>
+  {{end}}
+
+  <button type="submit" name="submit" value="submit" class="btn btn-primary">Submit</button>
+  <a class="btn btn-secondary" href="/">Cancel</a>
+</form>
+{{end}}{{end}}
+
+{{define "rating"}}{{$data := index . 0}}{{$name := index . 1}}{{$label := index . 2}}{{$feedback := index . 3}}
+  {{$value := $data.Form.Get $name}}
+  {{$invalid := isInvalid $data.Invalid $name}}
+  <div class="mb-4">
+    <label for="{{$name}}">{{$label}}</label>
+    <div class="form-check">
+      <input class="form-check-input {{$invalid}}" type="radio" name="{{$name}}" id="{{$name}}" value="1"{{if eq $value "1"}} checked{{end}}>
+      <label class="form-check-label" for="{{$name}}">1 (poor)</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input {{$invalid}}" type="radio" name="{{$name}}" id="{{$name}}" value="2"{{if eq $value "2"}} checked{{end}}>
+      <label class="form-check-label" for="{{$name}}">2</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input {{$invalid}}" type="radio" name="{{$name}}" id="{{$name}}" value="3"{{if eq $value "3"}} checked{{end}}>
+      <label class="form-check-label" for="{{$name}}">3</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input {{$invalid}}" type="radio" name="{{$name}}" id="{{$name}}" value="4"{{if eq $value "4"}} checked{{end}}>
+      <label class="form-check-label" for="{{$name}}">4 (great)</label>
+    </div>
+    {{if $invalid}}{{with $feedback}}<div class="text-danger"><small>{{.}}</small></div>{{end}}{{end}}
+  </div>
+{{end}}
+
+{{define "text"}}{{$data := index . 0}}{{$name := index . 1}}{{$label := index . 2}}
+  <div class="mb-4">
+    <label for="{{$name}}">{{$label}}</label>
+    <input type="text" class="form-control" autocomplete="off" id="{{$name}}" name="{{$name}}" value="{{$data.Form.Get $name}}">
+  </div>
+{{end}}
+
+{{define "textarea"}}{{$data := index . 0}}{{$name := index . 1}}{{$label := index . 2}}
+  <div class="mb-4">
+    <label for="{{$name}}">{{$label}}</label>
+    <textarea class="form-control" autocomplete="off" id="{{$name}}" name="{{$name}}" rows="8">{{$data.Form.Get $name}}</textarea>
+  </div>
+{{end}}

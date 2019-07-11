@@ -258,6 +258,10 @@ div {
   font-size: 12pt;
 }
 
+.bottomText {
+  width: 7.0in;
+}
+
 .submitOnline {
   float: right;
   width: 2.05in;
@@ -379,8 +383,9 @@ div {
   {{end}}
 </div>
 
+{{$year := $.ConferenceDate "2006"}}
+
 {{range $p := .Participants}}
-{{$year := $.Data.Conference.Date.Format "2006"}}
 {{$sessionClasses := call $.Data.SessionClasses $p}}
 
 <div class="page">
@@ -433,9 +438,9 @@ div {
     {{template "feedbackItem" "On-site check-in process"}}
     {{template "feedbackItem" "Midway"}}
     {{template "feedbackItem" "Lunch"}}
-    {{template "feedbackItem" "Facilities and logistics"}}
-    {{template "feedbackItem" "Signage and wayfinding"}}
+    {{template "feedbackItem" "Facilities"}}
     {{template "feedbackItem" "Mobile website (seaptc.org)"}}
+    {{template "feedbackItem" "Signage and wayfinding"}}
   </table>
 
 </div>
@@ -510,8 +515,8 @@ div {
         <col width="100%">
         <col width="0%">
       </colgroup>
-      <tr><td>7:40-8:15</td><td>Check-in and Registration</td><td>Wellness Center</td></tr>
-      <tr><td>8:15-8:45</td><td>Opening Ceremony</td><td>Wellness Center</td></tr>
+      <tr><td>7:40-8:15</td><td>Check-in and Registration</td><td>{{$.Data.Conference.OpeningLocation}}</td></tr>
+      <tr><td>8:15-8:45</td><td>Opening Ceremony</td><td>{{$.Data.Conference.OpeningLocation}}</td></tr>
       <tr><td>9:00-10:00</td>{{template "classTitleAndLocation" index $sessionClasses 0}}</tr>
       <tr><td>10:00-10:10</td><td colspan="2">Break &ndash; Visit the Midway or Scout Shop</td></tr>
       <tr><td>10:10-11:10</td>{{template "classTitleAndLocation" index $sessionClasses 1}}</tr>
@@ -531,18 +536,18 @@ div {
       <tr><td>3:35-3:45</td><td>Break &ndash; Visit the Scout Shop</td><td></td></tr>
       <tr><td>3:45-4:45</td>{{template "classTitleAndLocation" index $sessionClasses 5}}</tr>
       {{if .OABanquet}}
-        <tr><td>5:30-9:00</td><td>Order of the Arrow Banquet</td><td>HS The Grove</td></tr>
+        <tr><td>5:30-9:00</td><td>Order of the Arrow Banquet</td><td>{{$.Data.Conference.OABanquetLocation}}</td></tr>
       {{end}}
     </table>
-    <p><b>Questions?</b> PTC Administration is located in the College Center lobby.
-    {{if not .OABanquet}}
-      <p>The <b>Scout Shop</b> is open from 7:30 AM to 5:00 PM in the College Center lobby.
-    {{end}}
-      <p>Visit the <b>Midway</b> between 9:00 AM and 2:40 PM to meet
-      representatives from scouting groups,<br> programs and camps. The Midway
-      is located on the upper level of the Wellness Center.
-    <p>Login to <b>seaptc.org</b> with code <b>{{.LoginCode}}</b> to view your schedule and complete your evaluation.
-    <p><b>CC</b> College Center • <b>ED</b> Education • <b>IB</b> Instruction Building • <b>HS</b> Health Science &amp; Student Resources Building<br>
+    <div class="bottomText mb-4">
+      <p>{{template "adminBlurb"}}
+      {{if not .OABanquet}}
+        <p>{{template "scoutShopBlurb"}}
+      {{end}}
+      <p>{{template "midwayBlurb"}}
+      <p>Login to <b>seaptc.org</b> with code <b>{{.LoginCode}}</b> to view your schedule and complete your evaluation.
+      <p><b>CC</b> College Center • <b>ED</b> Education • <b>IB</b> Instruction Building • <b>HS</b> Health Science &amp; Student Resources Building<br>
+    </div>
   </div>
   <div class="sideName">
     <div{{if gt (len .LastName) 13}} class="sideNameSmall"{{end}}><b>{{.LastName}}</b></div>
@@ -565,7 +570,7 @@ div {
   </tr>
 {{end}}
 
-{{define "classTitle"}}{{if .Number}}{{.Number}}: {{end}}{{.ShortTitle}}{{if gt .Length 1}} ({{.Part}} of {{.Length}}){{end}}{{end}}
+{{define "classTitle"}}{{if .Number}}{{.Number}}: {{end}}{{.ShortTitle}}{{.IofN}}{{end}}
 {{define "classTitleAndLocation"}}<td{{if not .Location}} colspan="2"{{end}}>{{if .Instructor}}<b>Instructor</b> {{end}}{{template "classTitle" .}}</td>{{with .Location}}<td>{{.}}</td>{{end}}{{end}}
 {{define "lunch"}}{{$lunch := index . 0}}{{$dietaryRestrictions := index . 1}}
   <td>Lunch:

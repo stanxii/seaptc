@@ -17,7 +17,7 @@
     <tr><th>OA Banquet</th><td>{{if .OABanquet}}yes{{else}}no{{end}}</td></tr>
     <tr><th>Lunch</th><td>{{$.Data.Lunch.Name}}{{with $.Data.Lunch.Location}} @ {{.}}{{end}}</td></tr>
     {{if $.IsAdmin}}
-      <tr><th>Login Code</th><td>{{.LoginCode}}</td></tr>
+      <tr><th>Login Code</th><td><a href="/?loginCode={{.LoginCode}}">{{.LoginCode}}</a></td></tr>
       <tr><th>Dietary Rest.</th><td>{{.DietaryRestrictions}}</td></tr>
       <tr><th>Show QR Code</th><td>{{if .ShowQRCode}}yes{{else}}no{{end}}</td></tr>
       <tr><th>Print queued</th><td>{{if .PrintForm}}yes{{else}}no{{end}}</td></tr>

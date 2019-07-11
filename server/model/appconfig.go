@@ -9,6 +9,10 @@ type AppConfig struct {
 	AdminIDs []string `json:"adminIDs" datastore:"adminIDs,noindex"`
 	StaffIDs []string `json:"staffIDs" datastore:"staffIDs,noindex"`
 
+	Year  int `json:"year" datastore:"year,noindex"`
+	Month int `json:"month" datastore:"month,noindex"`
+	Day   int `json:"day" datastore:"day,noindex"`
+
 	// Google Open ID for login
 	LoginClient struct {
 		ID     string `json:"id" datastore:"id,noindex"`

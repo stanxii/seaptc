@@ -9,7 +9,7 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="google" content="notranslate">
   <link rel="stylesheet" href="{{staticFile "bootstrap.min.css"}}">
-  <link rel="stylesheet" href="{{staticFile "site.css"}}">
+  <style>body { font-family: "Ubuntu"; }</style>
   <link href="https://fonts.googleapis.com/css?family=Ubuntu&display=swap" rel="stylesheet">
   <title>{{block "title" $}}Program and Training Conference{{end}}</title>
   <style>
@@ -60,7 +60,7 @@
     </div>
     <div class="container navbar-dark navbar-scout-color">
       <a class="navbar-brand ml-auto d-flex justify-content-center"
-        href="https://seattlebsa.org/ptc">{{.Conference.Year}}
+        href="https://seattlebsa.org/ptc">{{$.Date.Format "2006"}}
         Program &amp; Training Conference</a>
       <ul class="navbar-nav mr-auto">
       </ul>

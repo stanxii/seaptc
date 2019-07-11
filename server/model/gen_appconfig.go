@@ -5,10 +5,13 @@ package model
 const (
 	AppConfig_AdminIDs                       = "adminIDs"
 	AppConfig_ClassesSheetURL                = "classesSheetURL"
+	AppConfig_Day                            = "day"
 	AppConfig_HMACKeys                       = "hmacKeys"
 	AppConfig_LoginClient                    = "loginClient"
+	AppConfig_Month                          = "month"
 	AppConfig_PlanningSheetServiceAccountKey = "planningSheetServiceAccountKey"
 	AppConfig_StaffIDs                       = "staffIDs"
 	AppConfig_SuggestedSchedulesSheetURL     = "suggestedScheduleSheetURL"
 	AppConfig_XSRFKey                        = "xsrfKey"
+	AppConfig_Year                           = "year"
 )

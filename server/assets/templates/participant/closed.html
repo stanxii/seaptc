@@ -1,0 +1,9 @@
+{{define "body"}}
+  {{if $.Data.Before}}
+    <p>Go to <a href="https://seattlebsa.org/ptc">seattlebsa.org/ptc</a> for information about the conference and to register.
+    <p>The website for conference participants opens on {{$.ConferenceDate "Monday, January 2"}}.
+  {{else}}
+    <p>The conference was on {{$.ConferenceDate "January 2, 2006"}}.
+    Go to <a href="https://seattlebsa.org/ptc">seattlebsa.org/ptc</a> for information about the conference.
+  {{end}}
+{{end}}

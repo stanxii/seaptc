@@ -1,31 +1,4 @@
 indexes:
-- kind: "class"
-  ancestor: yes
-  properties:
-  - name: "capacity"
-  - name: "length"
-  - name: "location"
-  - name: "responsibility"
-  - name: "title"
-- kind: "participant"
-  ancestor: yes
-  properties:
-  - name: "council"
-  - name: "district"
-  - name: "firstName"
-  - name: "lastName"
-  - name: "staff"
-  - name: "staffRole"
-  - name: "suffix"
-  - name: "unitNumber"
-  - name: "unitType"
-  - name: "youth"
-  - name: "printForm"
-  - name: "dietaryRestrictions"
-- kind: "class"
-  ancestor: yes
-  properties:
-  - name: "importHash"
 - kind: "participant"
   ancestor: yes
   properties:
@@ -34,5 +7,37 @@ indexes:
 - kind: "participant"
   ancestor: yes
   properties:
+  - name: "council"
+  - name: "dietaryRestrictions"
+  - name: "district"
+  - name: "firstName"
+  - name: "lastName"
+  - name: "printForm"
+  - name: "staff"
+  - name: "staffRole"
+  - name: "suffix"
+  - name: "unitNumber"
+  - name: "unitType"
+  - name: "youth"
+- kind: "participant"
+  ancestor: yes
+  properties:
   - name: "instructorClasses.class"
   - name: "instructorClasses.session"
+- kind: "class"
+  ancestor: yes
+  properties:
+  - name: "capacity"
+  - name: "evaluationCodes"
+  - name: "length"
+  - name: "location"
+  - name: "responsibility"
+  - name: "title"
+- kind: "class"
+  ancestor: yes
+  properties:
+  - name: "importHash"
+- kind: "classEvaluation"
+  ancestor: yes
+  properties:
+  - name: "class"

@@ -124,8 +124,23 @@ func DefaultParticipantLess(a, b *Participant) bool {
 func SortParticipants(participants []*Participant, key string) {
 	key, reverse := SortKeyReverse(key)
 	switch key {
+	case "type":
+		sort.Slice(participants, reverse(func(i, j int) bool {
+			switch {
+			case participants[i].Youth && !participants[j].Youth:
+				return true
+			case !participants[i].Youth && participants[j].Youth:
+				return false
+			case !participants[i].Staff && participants[j].Staff:
+				return true
+			case participants[i].Staff && !participants[j].Staff:
+				return false
+			default:
+				return participants[i].sortName < participants[j].sortName
+			}
+		}))
 	case "unit", "district", "council":
-		sort.Slice(participants, func(i, j int) bool {
+		sort.Slice(participants, reverse(func(i, j int) bool {
 			if participants[i].Council != participants[j].Council {
 				return participants[i].Council < participants[j].Council
 			}
@@ -139,21 +154,22 @@ func SortParticipants(participants []*Participant, key string) {
 				return participants[i].UnitType < participants[j].UnitType
 			}
 			return participants[i].sortName < participants[j].sortName
-		})
+		}))
 	default:
-		sort.Slice(participants, func(i, j int) bool { return participants[i].sortName < participants[j].sortName })
+		sort.Slice(participants, reverse(func(i, j int) bool { return participants[i].sortName < participants[j].sortName }))
 	}
-	reverse(participants)
 }
 
+// FilterParticipants filters the slice in place.
 func FilterParticipants(participants []*Participant, fn func(*Participant) bool) []*Participant {
-	var result []*Participant
+	i := 0
 	for _, p := range participants {
 		if fn(p) {
-			result = append(result, p)
+			participants[i] = p
+			i++
 		}
 	}
-	return result
+	return participants[:i]
 }
 
 func SortInstructorClasses(classes []InstructorClass) {

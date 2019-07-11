@@ -32,7 +32,7 @@ var setters = []struct {
 	{"location", func(c *class, s string) error { return setString(&c.Location, s) }},
 	{"instructorNames", setInstructors},
 	{"instructorEmails", func(c *class, s string) error { return setList(&c.InstructorEmails, strings.ToLower(s)) }},
-	{"evaluationCodes", func(c *class, s string) error { return setList(&c.EvaluationCodes, s) }},
+	{"evaluationCodes", func(c *class, s string) error { return setString(&c.EvaluationCodes, s) }},
 	{"accessToken", func(c *class, s string) error { return setString(&c.AccessToken, s) }},
 	{"cub", func(c *class, s string) error { return setProgram(c, 1<<model.CubScoutProgram, s) }},
 	{"bsa", func(c *class, s string) error { return setProgram(c, 1<<model.ScoutsBSAProgram, s) }},

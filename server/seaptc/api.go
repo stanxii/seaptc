@@ -75,7 +75,7 @@ type sessionEvent struct {
 	Programs     []string `json:"programs"`
 }
 
-func createSessionEvent(conf *model.Conference, class *model.Class) *sessionEvent {
+func createSessionEvent(date time.Time, class *model.Class) *sessionEvent {
 	start := model.Sessions[class.Start()].Start
 	end := model.Sessions[class.End()].End
 
@@ -86,6 +86,8 @@ func createSessionEvent(conf *model.Conference, class *model.Class) *sessionEven
 		}
 	}
 
+	year, month, day := date.Date()
+
 	return &sessionEvent{
 		Number:       class.Number,
 		New:          class.New,
@@ -94,8 +96,8 @@ func createSessionEvent(conf *model.Conference, class *model.Class) *sessionEven
 		Description:  class.Description,
 		StartSession: class.Start() + 1,
 		EndSession:   class.End() + 1,
-		StartTime:    []int{conf.Year, conf.Month, conf.Day, int(start / time.Hour), int((start % time.Hour) / time.Minute)},
-		EndTime:      []int{conf.Year, conf.Month, conf.Day, int(end / time.Hour), int((end % time.Hour) / time.Minute)},
+		StartTime:    []int{year, int(month), day, int(start / time.Hour), int((start % time.Hour) / time.Minute)},
+		EndTime:      []int{year, int(month), day, int(end / time.Hour), int((end % time.Hour) / time.Minute)},
 		Capacity:     class.Capacity,
 		Programs:     programs,
 	}
@@ -103,18 +105,19 @@ func createSessionEvent(conf *model.Conference, class *model.Class) *sessionEven
 
 var wsPattern = regexp.MustCompile(`[\r\n\t ]+`)
 
-func createSpecialSessionEvent(number int, title string, start, end time.Duration, conf *model.Conference) *sessionEvent {
+func createSpecialSessionEvent(number int, title string, start, end time.Duration, date time.Time) *sessionEvent {
 	description := ""
 	if i := strings.Index(title, "\n"); i >= 0 {
 		description = title[i+1:]
 		title = title[:i]
 	}
+	year, month, day := date.Date()
 	return &sessionEvent{
 		Number:      number,
 		Title:       strings.TrimSpace(wsPattern.ReplaceAllLiteralString(title, " ")),
 		Description: strings.TrimSpace(wsPattern.ReplaceAllLiteralString(description, " ")),
-		StartTime:   []int{conf.Year, conf.Month, conf.Day, int(start / time.Hour), int((start % time.Hour) / time.Minute)},
-		EndTime:     []int{conf.Year, conf.Month, conf.Day, int(end / time.Hour), int((end % time.Hour) / time.Minute)},
+		StartTime:   []int{year, int(month), day, int(start / time.Hour), int((start % time.Hour) / time.Minute)},
+		EndTime:     []int{year, int(month), day, int(end / time.Hour), int((end % time.Hour) / time.Minute)},
 	}
 }
 
@@ -135,12 +138,12 @@ func (svc *apiService) Serve_api_sessionEvents_(rc *requestContext) error {
 	case model.NoClassClassNumber:
 		se = createSpecialSessionEvent(number, conf.NoClassDescription,
 			model.Sessions[0].Start, model.Sessions[model.NumSession-1].End,
-			conf)
+			svc.conferenceDate)
 	case model.OABanquetClassNumber:
 		se = createSpecialSessionEvent(number, conf.OABanquetDescription,
 			17*time.Hour+30*time.Minute,
 			21*time.Hour+30*time.Minute,
-			conf)
+			svc.conferenceDate)
 	default:
 		class, err := svc.store.GetClass(rc.context(), number)
 		if err == store.ErrNotFound {
@@ -151,7 +154,7 @@ func (svc *apiService) Serve_api_sessionEvents_(rc *requestContext) error {
 		} else if err != nil {
 			return err
 		}
-		se = createSessionEvent(conf, class)
+		se = createSessionEvent(svc.conferenceDate, class)
 	}
 
 	return svc.respond(rc, se)

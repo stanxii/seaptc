@@ -1,0 +1,74 @@
+{{define "body"}}{{with $.Data}}
+
+
+{{if .EvaluatedConference}}
+  <h5>Evaluation Complete!</h5>
+  <p>To get your official PTC patch, show this screen to the instructor of your
+  session six class or go to PTC Administration in the College Center lobby.
+  <p><img class="img-fluid" src="/static/patch-color.png">
+{{else}}
+  <h5>Evaluation & Attendance</h5>
+  <p>Please evaluate classes at the end of each session and evaluate the overall
+  conference when you are done for the day. These evaluations are used to plan
+  next year's PTC and serve as your official training record.
+{{end}}
+
+<p><a href="/eval" class="btn btn-secondary">Evaluate Class</a>
+<a href="/eval?evaluationCode=conference" class="btn btn-secondary">Evaluate Conference</a>
+
+{{if or .EvaluatedClasses .EvaluatedConference}}
+  <h5>Completed evaluations</h5>
+  <ul>
+    {{range .EvaluatedClasses}}<li><a href="/eval?evaluationCode={{.EvaluationCode}}">{{.Number}}</a>: {{.ShortTitle}}{{.IofN}}{{end}}
+    {{if .EvaluatedConference}}<li><a href="/eval?evaluationCode=conference">Conference</a>{{end}}
+  </ul>
+{{end}}
+
+<h5>Schedule</h5>
+<table class="table table-striped mb-3">
+  <tbody>
+    <tr><td>7:40<br>8:15</td><td>Check-in and Registration<br><i>{{.Conference.OpeningLocation}}</i></td></tr>
+    <tr><td>8:15<br>8:45</td><td>Opening Ceremony<br><i>{{.Conference.OpeningLocation}}</i></td></tr>
+    <tr><td>9:00<br>10:00</td>{{template "classTitleAndLocation" index .SessionClasses 0}}</tr>
+    <tr><td>10:00<br>10:10</td><td>Break<br>Visit the Midway or Scout Shop.</td></tr>
+    <tr><td>10:10<br>11:10</td>{{template "classTitleAndLocation" index .SessionClasses 1}}</tr>
+    {{if eq .Lunch.Seating 1}}
+      <tr><td>11:10<br>12:15</td>{{template "lunch" args .Lunch .Participant.DietaryRestrictions}}</tr>
+      <tr><td>12:15<br>1:15</td>{{template "classTitleAndLocation" index .SessionClasses 2}}</tr>
+      <tr><td>1:15<br>1:25</td><td>Break<br>Visit the Midway or Scout Shop.</td></tr>
+    {{else}}
+      <tr><td>11:10<br>11:20</td><td>Break / Midway / Scout Shop</td></tr>
+      <tr><td>11:20<br>12:20</td>{{template "classTitleAndLocation" index .SessionClasses 2}}</tr>
+      <tr><td>12:20<br>1:25</td>{{template "lunch" args .Lunch .Participant.DietaryRestrictions}}</tr>
+    {{end}}
+    <tr><td>1:25<br>2:25</td>{{template "classTitleAndLocation" index .SessionClasses 3}}</tr>
+    <tr><td>2:25<br>2:35</td><td>Break<br>Visit the Scout Shop.</td></tr>
+    <tr><td>2:35<br>3:35</td>{{template "classTitleAndLocation" index .SessionClasses 4}}</tr>
+    <tr><td>3:35<br>3:45</td><td>Break<br>Visit the Scout Shop.</td></tr>
+    <tr><td>3:45<br>4:45</td>{{template "classTitleAndLocation" index .SessionClasses 5}}</tr>
+    {{if .Participant.OABanquet}}
+      <tr><td>5:30<br>9:00</td><td>Order of the Arrow Banquet<br><i>{{.Conference.OABanquetLocation}}</i></td></tr>
+    {{end}}
+  </tbody>
+</table>
+
+<p>{{template "adminBlurb"}}
+<p>{{template "scoutShopBlurb"}}
+<p>{{template "midwayBlurb"}}
+<p class="mb-4"><a href="/static/map.png">Map</a> | <a href="https://seattlebsa.org/ptc-documents/{{$.ConferenceDate "2006"}}">Class Materials</a>
+
+{{end}}{{end}}
+
+{{define "classTitleAndLocation"}}
+  <td>{{if .Instructor}}<b>Instructor</b> {{end}}{{with .Number}}{{.}}: {{end}}{{.ShortTitle}}{{.IofN}}<br><i>{{.Location}}</i></td>
+{{end}}
+
+{{define "lunch"}}{{$lunch := index . 0}}{{$dietaryRestrictions := index . 1}}
+  <td>Lunch
+      {{with $dietaryRestrictions}} ({{.}}){{end}}
+      &ndash;
+      Please pickup your lunch at your assigned location.
+      <br>
+      <i>{{$lunch.Location}}</i>
+  </td>
+{{end}}

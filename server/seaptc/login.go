@@ -51,11 +51,11 @@ func (svc *loginService) oauth2ConfigForRequest(rc *requestContext) *oauth2.Conf
 	}
 }
 
-func (svc *loginService) Serve_login(rc *requestContext) error {
+func (svc *loginService) Serve_dashboard_login(rc *requestContext) error {
 	p := make([]byte, 32)
 	rand.Read(p)
 	state := fmt.Sprintf("%x", p)
-	if err := svc.loginStateCodec.Encode(rc.response, state, rc.request.FormValue("ref")); err != nil {
+	if err := svc.loginStateCodec.Encode(rc.response, state, rc.request.FormValue("_ref")); err != nil {
 		return err
 	}
 	c := svc.oauth2ConfigForRequest(rc)
@@ -93,7 +93,7 @@ func (svc *loginService) Serve_login_callback(rc *requestContext) error {
 		return err
 	}
 	id := strings.ToLower(userInfo.Email)
-	if svc.adminIDs[id] || svc.getStaffIDs(rc.context())[id] {
+	if svc.adminIDs[id] || svc.isStaff(rc.context(), id) {
 		svc.staffIDCodec.Encode(rc.response, id)
 		rc.logf("login success: %s", id)
 	} else {
@@ -101,13 +101,13 @@ func (svc *loginService) Serve_login_callback(rc *requestContext) error {
 		rc.logf("login fail: %s", id)
 	}
 	if ref == "" {
-		ref = "/"
+		ref = "/dashboard"
 	}
 	http.Redirect(rc.response, rc.request, ref, http.StatusSeeOther)
 	return nil
 }
 
-func (svc *loginService) Serve_logout(rc *requestContext) error {
+func (svc *loginService) Serve_dashboard_logout(rc *requestContext) error {
 	svc.staffIDCodec.Encode(rc.response)
 	http.Redirect(rc.response, rc.request, "/dashboard", http.StatusSeeOther)
 	return nil

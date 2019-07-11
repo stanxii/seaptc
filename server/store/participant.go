@@ -96,6 +96,23 @@ func (store *Store) GetParticipant(ctx context.Context, id string) (*model.Parti
 	return xp.model(), err
 }
 
+func (store *Store) GetParticipantForLoginCode(ctx context.Context, loginCode string) (*model.Participant, error) {
+	if loginCode == "" {
+		return nil, ErrNotFound
+	}
+	var participants []*xParticipant
+	_, err := store.dsClient.GetAll(ctx, datastore.NewQuery(participantKind).
+		Ancestor(conferenceEntityGroupKey).
+		Filter(model.Participant_LoginCode+"=", loginCode), &participants)
+	if err != nil {
+		return nil, err
+	}
+	if len(participants) != 1 {
+		return nil, ErrNotFound
+	}
+	return participants[0].model(), nil
+}
+
 func (store *Store) GetParticipantsByID(ctx context.Context, ids []string) ([]*model.Participant, error) {
 	keys := make([]*datastore.Key, len(ids))
 	for i, id := range ids {

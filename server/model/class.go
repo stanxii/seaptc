@@ -26,7 +26,7 @@ type Class struct {
 	SpreadsheetRow   int      `json:"-" datastore:"spreadsheetRow,noindex" fields:"Import"`
 	InstructorNames  []string `json:"instructorNames" datastore:"instructorNames,noindex" fields:"Import"`
 	InstructorEmails []string `json:"instructorEmails" datastore:"instructorEmails,noindex" fields:"Import"`
-	EvaluationCodes  []string `json:"evaluationCodes" datastore:"evaluationCodes,noindex" fields:"Import"`
+	EvaluationCodes  string   `json:"evaluationCodes" datastore:"evaluationCodes" fields:"Import"`
 	AccessToken      string   `json:"accessToken" datastore:"accessToken,noindex" fields:"Import"`
 
 	// Hash computed from planning spreadhseet fields.
@@ -93,7 +93,7 @@ func SortClasses(classes []*Class, key string) {
 	key, reverse := SortKeyReverse(key)
 	switch key {
 	case Class_Location:
-		sort.Slice(classes, func(i, j int) bool {
+		sort.Slice(classes, reverse(func(i, j int) bool {
 			switch {
 			case classes[i].Location < classes[j].Location:
 				return true
@@ -102,9 +102,9 @@ func SortClasses(classes []*Class, key string) {
 			default:
 				return classes[i].Number < classes[j].Number
 			}
-		})
+		}))
 	case Class_Responsibility:
-		sort.Slice(classes, func(i, j int) bool {
+		sort.Slice(classes, reverse(func(i, j int) bool {
 			switch {
 			case classes[i].Responsibility < classes[j].Responsibility:
 				return true
@@ -113,9 +113,9 @@ func SortClasses(classes []*Class, key string) {
 			default:
 				return classes[i].Number < classes[j].Number
 			}
-		})
+		}))
 	case Class_Capacity:
-		sort.Slice(classes, func(i, j int) bool {
+		sort.Slice(classes, reverse(func(i, j int) bool {
 			switch {
 			case classes[i].Capacity < classes[j].Capacity:
 				return true
@@ -124,9 +124,8 @@ func SortClasses(classes []*Class, key string) {
 			default:
 				return classes[i].Number < classes[j].Number
 			}
-		})
+		}))
 	default:
-		sort.Slice(classes, func(i, j int) bool { return classes[i].Number < classes[j].Number })
+		sort.Slice(classes, reverse(func(i, j int) bool { return classes[i].Number < classes[j].Number }))
 	}
-	reverse(classes)
 }

@@ -1,8 +1,8 @@
 package model
 
 import (
+	"strings"
 	"sync"
-	"time"
 )
 
 //go:generate go run gogen.go -input conference.go -output gen_conference.go Conference
@@ -32,10 +32,6 @@ type Conference struct {
 	// First lunch is default choice
 	Lunches []*Lunch `json:"lunches" datastore:"lunches,noindex"`
 
-	Year  int `json:"year" datastore:"year,noindex"`
-	Month int `json:"month" datastore:"month,noindex"`
-	Day   int `json:"day" datastore:"day,noindex"`
-
 	RegistrationURL string `json:"registrationURL" datastore:"registrationURL,noindex,omitempty"`
 
 	// Use this message to announce when registration will open or that the
@@ -48,20 +44,29 @@ type Conference struct {
 	// Whitespace separated email addresses.
 	StaffIDs string `json:"staffIDs" datastore:"staffIDs,noindex,omitempty"`
 
-	lunch struct {
-		once       sync.Once
+	OABanquetLocation string `json:"oaBanquetLocation" datastore:"oaBanquetLocation,noindex"`
+	OpeningLocation   string `json:"openingLocation" datastore:"openingLocation,noindex"`
+
+	once     sync.Once
+	staffMap map[string]bool
+	lunch    struct {
 		def        *Lunch
 		byClass    map[int]*Lunch
 		byUnitType map[string]*Lunch
 	}
 }
 
-func (c *Conference) Date() time.Time {
-	return time.Date(c.Year, time.Month(c.Month), c.Day, 0, 0, 0, 0, TimeLocation)
+func (c *Conference) IsStaff(id string) bool {
+	c.setup()
+	return c.staffMap[id]
 }
 
-func (c *Conference) setupLunch() {
-	c.lunch.once.Do(func() {
+func (c *Conference) setup() {
+	c.once.Do(func() {
+		c.staffMap = make(map[string]bool)
+		for _, id := range strings.Fields(c.StaffIDs) {
+			c.staffMap[strings.ToLower(id)] = true
+		}
 		c.lunch.byClass = make(map[int]*Lunch)
 		c.lunch.byUnitType = make(map[string]*Lunch)
 		for _, l := range c.Lunches {
@@ -81,7 +86,7 @@ var (
 )
 
 func (c *Conference) ClassLunch(class *Class) *Lunch {
-	c.setupLunch()
+	c.setup()
 	start, end := class.StartEnd()
 	if start > 2 || end < 2 {
 		return nil
@@ -94,7 +99,7 @@ func (c *Conference) ClassLunch(class *Class) *Lunch {
 }
 
 func (c *Conference) ParticipantLunch(p *Participant) *Lunch {
-	c.setupLunch()
+	c.setup()
 	var skipClasses bool
 	for _, ic := range p.InstructorClasses {
 		if ic.Session == LunchSession {

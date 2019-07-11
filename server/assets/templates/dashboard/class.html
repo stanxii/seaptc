@@ -14,10 +14,10 @@
   {{end}}
   {{if .InstructorView}}
     <tr><th>Location / Capacity</th><td>{{with .Class.Location}}{{.}}{{else}}Location not assigned{{end}} / {{.Class.Capacity}}</td></tr>
-    <tr><th>Instructors</th><td>{{range $i, $u := .Class.InstructorNames}}{{if $i}}, {{end}}{{.}}{{end}}</td></tr>
-    <tr><th>Evaluation codes</th><td>{{range $i, $c := .Class.EvaluationCodes}}{{if $i}}, {{end}}{{.}}{{end}}</td></tr>
+    <tr><th valign="top">Instructors</th><td>{{range $i, $u := .Class.InstructorNames}}{{if $i}}, {{end}}{{.}}{{end}}</td></tr>
+    <tr><th>Evaluation codes</th><td>{{.Class.EvaluationCodes}}</td></tr>
     <tr><th>Participants</th><td>{{len .Participants}}</td></tr>
-    <tr><th>Participant emails</th><td>
+    <tr><th valign="top">Participant emails</th><td>
       <a href="mailto:?bcc={{range $i, $e := .ParticipantEmails}}{{if $i}},{{end}}{{$e}}{{end}}">
           {{range $i, $e := .ParticipantEmails}}{{if $i}}, {{end}}{{$e}}{{end}}
       </a>

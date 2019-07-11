@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"sync"
+	"time"
 
 	"cloud.google.com/go/datastore"
+	"github.com/seaptc/server/model"
 )
 
 var (
@@ -24,7 +27,9 @@ func SetupFlags() {
 }
 
 type Store struct {
-	dsClient *datastore.Client
+	dsClient        *datastore.Client
+	classMapsCache  valueCache
+	conferenceCache valueCache
 }
 
 // NewFromFlags creates a client using flags defined in this package.
@@ -175,4 +180,60 @@ func (store *Store) updateEntities(ctx context.Context, keys []*datastore.Key, u
 		keys = keys[n:]
 	}
 	return mutationCount, nil
+}
+
+type valueCache struct {
+	mu      sync.RWMutex
+	updated time.Time
+	value   interface{}
+}
+
+func (vc *valueCache) clear() {
+	vc.mu.Lock()
+	vc.updated = time.Time{}
+	vc.mu.Unlock()
+}
+
+func (vc *valueCache) get(ctx context.Context, maxAge time.Duration, fn func() (interface{}, error)) (interface{}, error) {
+	vc.mu.RLock()
+	updated := vc.updated
+	value := vc.value
+	vc.mu.RUnlock()
+	if time.Since(updated) < maxAge {
+		return value, nil
+	}
+
+	vc.mu.Lock()
+	defer vc.mu.Unlock()
+
+	if time.Since(vc.updated) < maxAge {
+		return vc.value, nil
+	}
+
+	value, err := fn()
+	if err != nil {
+		return value, err
+	}
+
+	vc.updated = time.Now()
+	vc.value = value
+	return value, nil
+}
+
+func (store *Store) GetCachedConference(ctx context.Context) (*model.Conference, error) {
+	v, err := store.conferenceCache.get(ctx, 10*time.Minute, func() (interface{}, error) {
+		v, err := store.GetConference(ctx)
+		return v, err
+	})
+	conf, _ := v.(*model.Conference)
+	return conf, err
+}
+
+func (store *Store) GetCachedClassMaps(ctx context.Context) (*model.ClassMaps, error) {
+	v, err := store.classMapsCache.get(ctx, 15*time.Minute, func() (interface{}, error) {
+		classes, err := store.GetAllClasses(ctx)
+		return model.NewClassMaps(classes), err
+	})
+	cms, _ := v.(*model.ClassMaps)
+	return cms, err
 }

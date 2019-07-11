@@ -5,7 +5,7 @@ go 1.12
 require (
 	cloud.google.com/go v0.39.0
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/garyburd/web v0.0.0-20190222211335-94e2f873bcec
+	github.com/garyburd/web v0.0.0-20190710222111-c2a3d61b49ae
 	github.com/google/go-cmp v0.3.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	golang.org/x/net v0.0.0-20190509222800-a4d6f7feada5

@@ -55,13 +55,6 @@ func (svc *catalogService) makeHandler(v interface{}) func(*requestContext) erro
 	return func(rc *requestContext) error { return f(svc, rc) }
 }
 
-func (svc *catalogService) Serve_(rc *requestContext) error {
-	if rc.request.URL.Path != "/" {
-		return httperror.ErrNotFound
-	}
-	return rc.respond(svc.templates.Index, http.StatusOK, nil)
-}
-
 func (svc *catalogService) Serve_catalog_(rc *requestContext) error {
 	// We don't have enough traffic to bother with single flighting the
 	// datastore access in this function.
@@ -185,6 +178,7 @@ func (svc *catalogService) buildCatalog(ctx context.Context) (int, int, error) {
 		Morning            [][]*catalogClass
 		Afternoon          [][]*catalogClass
 		Conference         *model.Conference
+		Date               time.Time
 		Classes            []*model.Class
 		Key                []*model.ProgramDescription
 		SuggestedSchedules []*catalogSuggestedSchedule
@@ -195,6 +189,7 @@ func (svc *catalogService) buildCatalog(ctx context.Context) (int, int, error) {
 		Afternoon:  createCatalogGrid(classes, false),
 		Key:        model.ProgramDescriptions,
 		Conference: conf,
+		Date:       svc.conferenceDate,
 		Classes:    classes,
 	}
 

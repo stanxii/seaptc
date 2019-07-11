@@ -3,23 +3,38 @@ package model
 import (
 	"fmt"
 	"log"
+	"strings"
 )
-
-type ClassMap map[int]*Class
-
-func NewClassMap(classes []*Class) ClassMap {
-	m := make(map[int]*Class)
-	for _, c := range classes {
-		m[c.Number] = c
-	}
-	return m
-}
 
 type SessionClass struct {
 	*Class
 	Session    int
 	Part       int
 	Instructor bool
+}
+
+type ClassMaps struct {
+	ClassByNumber                map[int]*Class
+	SessionClassByEvaluationCode map[string]*SessionClass
+}
+
+func NewClassMaps(classes []*Class) *ClassMaps {
+	cms := &ClassMaps{
+		ClassByNumber:                make(map[int]*Class),
+		SessionClassByEvaluationCode: make(map[string]*SessionClass),
+	}
+	for _, c := range classes {
+		cms.ClassByNumber[c.Number] = c
+		for i, code := range strings.Split(c.EvaluationCodes, ",") {
+			code = strings.TrimSpace(code)
+			cms.SessionClassByEvaluationCode[code] = &SessionClass{
+				Class:   c,
+				Session: c.Start() + i,
+				Part:    i + 1,
+			}
+		}
+	}
+	return cms
 }
 
 func (sc *SessionClass) NumberDotPart() string {
@@ -29,15 +44,30 @@ func (sc *SessionClass) NumberDotPart() string {
 	return fmt.Sprintf("%d.%d", sc.Number, sc.Part)
 }
 
+func (sc *SessionClass) IofN() string {
+	if sc.Length <= 1 {
+		return ""
+	}
+	return fmt.Sprintf(" (%d of %d)", sc.Part, sc.Length)
+}
+
+func (sc *SessionClass) EvaluationCode() string {
+	codes := strings.Split(sc.EvaluationCodes, ",")
+	if 1 <= sc.Part && sc.Part <= len(codes) {
+		return strings.TrimSpace(codes[sc.Part-1])
+	}
+	return ""
+}
+
 var noClass = &Class{Title: "No Class", Length: 1}
 
-func (classes ClassMap) ParticipantSessionClasses(p *Participant) []*SessionClass {
+func (cms *ClassMaps) ParticipantSessionClasses(p *Participant) []*SessionClass {
 	sessionClasses := make([]*SessionClass, NumSession)
 	for i := range sessionClasses {
 		sessionClasses[i] = &SessionClass{Session: i, Class: noClass}
 	}
 	for _, n := range p.Classes {
-		c := classes[n]
+		c := cms.ClassByNumber[n]
 		if c == nil {
 			log.Printf("unknown class %d for participant %v", n, p.ID)
 			continue
@@ -53,7 +83,7 @@ func (classes ClassMap) ParticipantSessionClasses(p *Participant) []*SessionClas
 		}
 	}
 	for _, ic := range p.InstructorClasses {
-		c := classes[ic.Class]
+		c := cms.ClassByNumber[ic.Class]
 		if c == nil {
 			log.Printf("unknown instructor class %d for participant %v", ic.Class, p.ID)
 			continue

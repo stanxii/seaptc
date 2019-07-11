@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -39,7 +40,7 @@ type dashboardService struct {
 		Reprint      *templates.Template `html:"dashboard/reprint.html dashboard/root.html common.html"`
 
 		LunchStickers *templates.Template `html:"dashboard/lunchStickers.html"`
-		Form          *templates.Template `html:"dashboard/form.html"`
+		Form          *templates.Template `html:"dashboard/form.html blurbs.html"`
 	}
 }
 
@@ -149,12 +150,11 @@ func (svc *dashboardService) Serve_dashboard_classes(rc *requestContext) error {
 	model.SortClasses(classes, rc.request.FormValue("sort"))
 	switch sortKey, reverse := model.SortKeyReverse(rc.request.FormValue("sort")); sortKey {
 	case "registered":
-		sort.SliceStable(classes, func(i, j int) bool {
+		sort.SliceStable(classes, reverse(func(i, j int) bool {
 			return registered[classes[i].Number] < registered[classes[j].Number]
-		})
-		reverse(classes)
+		}))
 	case "available":
-		sort.SliceStable(classes, func(i, j int) bool {
+		sort.SliceStable(classes, reverse(func(i, j int) bool {
 			m := classes[i].Capacity - registered[classes[i].Number]
 			if classes[i].Capacity == 0 {
 				m = 9999
@@ -164,8 +164,7 @@ func (svc *dashboardService) Serve_dashboard_classes(rc *requestContext) error {
 				n = 9999
 			}
 			return m < n
-		})
-		reverse(classes)
+		}))
 	}
 
 	var data = struct {
@@ -268,25 +267,13 @@ func (svc *dashboardService) Serve_dashboard_classes_(rc *requestContext) error 
 }
 
 func (svc *dashboardService) Serve_dashboard_participants(rc *requestContext) error {
-	var (
-		g            errgroup.Group
-		participants []*model.Participant
-		classes      []*model.Class
-	)
-
-	g.Go(func() error {
-		var err error
-		participants, err = svc.store.GetAllParticipants(rc.context())
+	participants, err := svc.store.GetAllParticipants(rc.context())
+	if err != nil {
 		return err
-	})
+	}
 
-	g.Go(func() error {
-		var err error
-		classes, err = svc.store.GetAllClasses(rc.context())
-		return err
-	})
-
-	if err := g.Wait(); err != nil {
+	classMaps, err := svc.store.GetCachedClassMaps(rc.context())
+	if err != nil {
 		return err
 	}
 
@@ -297,7 +284,7 @@ func (svc *dashboardService) Serve_dashboard_participants(rc *requestContext) er
 		SessionClasses interface{}
 	}{
 		participants,
-		model.NewClassMap(classes).ParticipantSessionClasses,
+		classMaps.ParticipantSessionClasses,
 	}
 	return rc.respond(svc.templates.Participants, http.StatusOK, &data)
 }
@@ -309,45 +296,32 @@ func (svc *dashboardService) Serve_dashboard_participants_(rc *requestContext) e
 
 	id := strings.TrimPrefix(rc.request.URL.Path, "/dashboard/participants/")
 
-	var (
-		g           errgroup.Group
-		participant *model.Participant
-		conf        *model.Conference
-		classes     []*model.Class
-	)
-
-	g.Go(func() error {
-		var err error
-		participant, err = svc.store.GetParticipant(rc.context(), id)
-		if err == store.ErrNotFound {
-			err = httperror.ErrNotFound
-		}
+	conf, err := svc.store.GetCachedConference(rc.context())
+	if err != nil {
 		return err
-	})
+	}
 
-	g.Go(func() error {
-		var err error
-		conf, err = svc.store.GetConference(rc.context())
+	classMaps, err := svc.store.GetCachedClassMaps(rc.context())
+	if err != nil {
 		return err
-	})
+	}
 
-	g.Go(func() error {
-		var err error
-		classes, err = svc.store.GetAllClasses(rc.context())
-		return err
-	})
-
-	if err := g.Wait(); err != nil {
+	participant, err := svc.store.GetParticipant(rc.context(), id)
+	if err == store.ErrNotFound {
+		return httperror.ErrNotFound
+	} else if err != nil {
 		return err
 	}
 
 	var data = struct {
 		Participant    *model.Participant
+		Conference     *model.Conference
 		SessionClasses []*model.SessionClass
 		Lunch          *model.Lunch
 	}{
 		participant,
-		model.NewClassMap(classes).ParticipantSessionClasses(participant),
+		conf,
+		classMaps.ParticipantSessionClasses(participant),
 		conf.ParticipantLunch(participant),
 	}
 	return rc.respond(svc.templates.Participant, http.StatusOK, &data)
@@ -380,7 +354,7 @@ func (svc *dashboardService) Serve_dashboard_uploadRegistrations(rc *requestCont
 		return err
 	}
 
-	return rc.redirect("/dashboard/admin", "info", "Import %d records; ", len(participants), summary)
+	return rc.redirect("/dashboard/admin", "info", "Import %d records; %s", len(participants), summary)
 }
 
 func (svc *dashboardService) Serve_dashboard_refreshClasses(rc *requestContext) error {
@@ -450,24 +424,10 @@ func (svc *dashboardService) Serve_dashboard_conference(rc *requestContext) erro
 	}
 
 	if rc.request.Method != "POST" {
-		data.Form.Set("year", strconv.Itoa(conf.Year))
-		data.Form.Set("month", strconv.Itoa(conf.Month))
-		data.Form.Set("day", strconv.Itoa(conf.Day))
 		p, _ := json.MarshalIndent(conf.Lunches, "", "  ")
 		data.Form.Set("lunches", string(p))
 		return rc.respond(svc.templates.Conference, http.StatusOK, &data)
 	}
-
-	setInt := func(pi *int, key string) {
-		var err error
-		*pi, err = strconv.Atoi(data.Form.Get(key))
-		if err != nil {
-			data.Invalid[key] = "is-invalid"
-		}
-	}
-	setInt(&conf.Year, "year")
-	setInt(&conf.Month, "month")
-	setInt(&conf.Day, "day")
 
 	if err := json.Unmarshal([]byte(data.Form.Get("lunches")), &conf.Lunches); err != nil {
 		data.Invalid["lunches"] = err.Error()
@@ -477,6 +437,9 @@ func (svc *dashboardService) Serve_dashboard_conference(rc *requestContext) erro
 	conf.CatalogStatusMessage = data.Form.Get("catalogStatusMessage")
 	conf.NoClassDescription = data.Form.Get("noClassDescription")
 	conf.OABanquetDescription = data.Form.Get("oaBanquetDescription")
+	conf.OpeningLocation = data.Form.Get("openingLocation")
+	conf.OABanquetLocation = data.Form.Get("oaBanquetLocation")
+
 	conf.StaffIDs = data.Form.Get("staffIDs")
 	if len(data.Invalid) > 0 {
 		return rc.respond(svc.templates.Conference, http.StatusOK, &data)
@@ -687,10 +650,18 @@ func (svc *dashboardService) Serve_dashboard_admin(rc *requestContext) error {
 	if !rc.isAdmin {
 		return httperror.ErrForbidden
 	}
+
+	conf, err := svc.store.GetCachedConference(rc.context())
+	if err != nil {
+		return err
+	}
+
 	data := struct {
-		DevMode bool
+		DevMode    bool
+		Conference *model.Conference
 	}{
-		DevMode: svc.devMode,
+		DevMode:    svc.devMode,
+		Conference: conf,
 	}
 	return rc.respond(svc.templates.Admin, http.StatusOK, &data)
 }
@@ -819,14 +790,7 @@ func (svc *dashboardService) Serve_dashboard_forms(rc *requestContext) error {
 	options.sort(participants)
 
 	if options.filter {
-		i := 0
-		for _, p := range participants {
-			if p.PrintForm {
-				participants[i] = p
-				i++
-			}
-		}
-		participants = participants[:i]
+		participants = model.FilterParticipants(participants, func(p *model.Participant) bool { return p.PrintForm })
 	}
 
 	if options.limit > 0 && len(participants) > options.limit {
@@ -884,7 +848,8 @@ func (svc *dashboardService) renderForms(rc *requestContext, auto int, preview b
 
 		g.Go(func() error {
 			classes, err := svc.store.GetAllClasses(rc.context())
-			data.SessionClasses = model.NewClassMap(classes).ParticipantSessionClasses
+			classMaps := model.NewClassMaps(classes)
+			data.SessionClasses = classMaps.ParticipantSessionClasses
 			return err
 		})
 
@@ -977,25 +942,13 @@ func (svc *dashboardService) Serve_dashboard_exportParticipants(rc *requestConte
 		return httperror.ErrForbidden
 	}
 
-	var (
-		g            errgroup.Group
-		participants []*model.Participant
-		m            model.ClassMap
-	)
-
-	g.Go(func() error {
-		classes, err := svc.store.GetAllClasses(rc.context())
-		m = model.NewClassMap(classes)
+	participants, err := svc.store.GetAllParticipantsFull(rc.context())
+	if err != nil {
 		return err
-	})
+	}
 
-	g.Go(func() error {
-		var err error
-		participants, err = svc.store.GetAllParticipantsFull(rc.context())
-		return err
-	})
-
-	if err := g.Wait(); err != nil {
+	classMaps, err := svc.store.GetCachedClassMaps(rc.context())
+	if err != nil {
 		return err
 	}
 
@@ -1031,7 +984,7 @@ func (svc *dashboardService) Serve_dashboard_exportParticipants(rc *requestConte
 	w.Write(record)
 
 	for _, p := range participants {
-		sessionClasses := m.ParticipantSessionClasses(p)
+		sessionClasses := classMaps.ParticipantSessionClasses(p)
 
 		var email2 string
 		if p.Youth && p.RegisteredByEmail != p.Email {
@@ -1067,4 +1020,114 @@ func (svc *dashboardService) Serve_dashboard_exportParticipants(rc *requestConte
 	}
 	w.Flush()
 	return nil
+}
+
+func (svc *dashboardService) rand() (uint32, error) {
+	var b [4]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return 0, err
+	}
+	return uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24, nil
+}
+
+func (svc *dashboardService) Serve_dashboard_evalCodes(rc *requestContext) error {
+	if !rc.isAdmin {
+		return httperror.ErrForbidden
+	}
+
+	classes, err := svc.store.GetAllClassesFull(rc.context())
+	if err != nil {
+		return err
+	}
+
+	// Collect codes in use.
+	evaluationCodes := make(map[string]int)
+	accessTokens := make(map[string]int)
+	for _, class := range classes {
+		if class.AccessToken != "" {
+			num, ok := accessTokens[class.AccessToken]
+			if ok {
+				return &httperror.Error{
+					Status:  http.StatusInternalServerError,
+					Message: fmt.Sprintf("Access token %s used in class %d and %d", class.AccessToken, num, class.Number),
+				}
+			}
+			accessTokens[class.AccessToken] = class.Number
+		}
+		for _, code := range strings.Split(class.EvaluationCodes, ",") {
+			code = strings.TrimSpace(code)
+			num, ok := evaluationCodes[code]
+			if ok {
+				return &httperror.Error{
+					Status:  http.StatusInternalServerError,
+					Message: fmt.Sprintf("Code %s used in class %d and %d", code, num, class.Number),
+				}
+			}
+			evaluationCodes[code] = class.Number
+		}
+	}
+
+	// Don't assign these codes
+	evaluationCodes["0000"] = 0
+	evaluationCodes["1234"] = 0
+
+	for _, class := range classes {
+		if class.AccessToken == "" {
+			for i := 0; i < 1000; i++ {
+				r, err := svc.rand()
+				if err != nil {
+					return err
+				}
+				token := fmt.Sprintf("%08x", r)
+				_, ok := accessTokens[token]
+				if !ok {
+					accessTokens[token] = class.Number
+					class.AccessToken = token
+					break
+				}
+			}
+		}
+		codes := strings.Split(class.EvaluationCodes, ",")
+		if len(codes) > class.Length {
+			// Remove extra codes.
+			codes = codes[:class.Length]
+		} else {
+			// Add codes to class as needed.
+			for i := len(codes); i < class.Length; i++ {
+				for j := 0; j < 1000; j++ {
+					r, err := svc.rand()
+					if err != nil {
+						return err
+					}
+					code := fmt.Sprintf("%04d", r%10000)
+					_, ok := evaluationCodes[code]
+					if !ok {
+						evaluationCodes[code] = class.Number
+						codes = append(codes, code)
+						break
+					}
+				}
+			}
+		}
+		class.EvaluationCodes = strings.Join(codes, ", ")
+	}
+
+	rc.response.Header().Set("Content-Type", "text/csv")
+	rc.response.Header().Set("Content-Disposition", `attachment; filename="classes.csv"`)
+
+	model.SortClasses(classes, "")
+
+	// Quote tokens and codes in output to prevent spreadsheet from
+	// interpreting the values as numbers.
+	fmt.Fprintf(rc.response, "\"class\",\"accessToken\",\"evaluationCodes\"\n")
+	for _, class := range classes {
+		fmt.Fprintf(rc.response, "\"%d\",\"=\"\"%s\"\"\",\"=\"\"%s\"\"\"\n", class.Number, class.AccessToken, class.EvaluationCodes)
+	}
+	return nil
+}
+
+func (svc *dashboardService) Serve_dashboard_setDebugTime(rc *requestContext) error {
+	what := rc.request.FormValue("time")
+	svc.debugTimeCodec.Encode(rc.response, what)
+	return rc.redirect("/dashboard/admin", "info", "Debug time set to %q.", what)
 }
