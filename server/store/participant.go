@@ -406,12 +406,21 @@ func equalInstructorClasses(a []model.InstructorClass, b []model.InstructorClass
 	return true
 }
 
-func (store *Store) SetInstructorClasses(ctx context.Context, id string, classes []model.InstructorClass) error {
+func (store *Store) SetInstructorClasses(ctx context.Context, participantID string, classes []model.InstructorClass) error {
 	model.SortInstructorClasses(classes)
-	key := participantKey(id)
+	key := participantKey(participantID)
 	return store.updateEntity(ctx, key, func(xp *xParticipant) error {
 		xp.PrintForm = xp.PrintForm || !equalInstructorClasses(classes, xp.InstructorClasses)
 		xp.InstructorClasses = classes
+		return nil
+	})
+}
+
+func (store *Store) SetNotesNoShow(ctx context.Context, participantID, notes string, noShow bool) error {
+	key := participantKey(participantID)
+	return store.updateEntity(ctx, key, func(xp *xParticipant) error {
+		xp.Notes = notes
+		xp.NoShow = noShow
 		return nil
 	})
 }

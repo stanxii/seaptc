@@ -72,11 +72,11 @@ func (svc *loginService) Serve_login_callback(rc *requestContext) error {
 		return httperror.ErrForbidden
 	}
 	c := svc.oauth2ConfigForRequest(rc)
-	token, err := c.Exchange(rc.context(), rc.request.FormValue("code"))
+	token, err := c.Exchange(rc.ctx, rc.request.FormValue("code"))
 	if err != nil {
 		return &httperror.Error{Status: http.StatusBadRequest, Err: err}
 	}
-	client := c.Client(rc.context(), token)
+	client := c.Client(rc.ctx, token)
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func (svc *loginService) Serve_login_callback(rc *requestContext) error {
 		return err
 	}
 	id := strings.ToLower(userInfo.Email)
-	if svc.adminIDs[id] || svc.isStaff(rc.context(), id) {
+	if svc.adminIDs[id] || svc.isStaff(rc.ctx, id) {
 		svc.staffIDCodec.Encode(rc.response, id)
 		rc.logf("login success: %s", id)
 	} else {

@@ -4,70 +4,115 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 )
 
 type SessionClass struct {
 	*Class
 	Session    int
-	Part       int
 	Instructor bool
-}
-
-type ClassMaps struct {
-	ClassByNumber                map[int]*Class
-	SessionClassByEvaluationCode map[string]*SessionClass
-}
-
-func NewClassMaps(classes []*Class) *ClassMaps {
-	cms := &ClassMaps{
-		ClassByNumber:                make(map[int]*Class),
-		SessionClassByEvaluationCode: make(map[string]*SessionClass),
-	}
-	for _, c := range classes {
-		cms.ClassByNumber[c.Number] = c
-		for i, code := range strings.Split(c.EvaluationCodes, ",") {
-			code = strings.TrimSpace(code)
-			cms.SessionClassByEvaluationCode[code] = &SessionClass{
-				Class:   c,
-				Session: c.Start() + i,
-				Part:    i + 1,
-			}
-		}
-	}
-	return cms
 }
 
 func (sc *SessionClass) NumberDotPart() string {
 	if sc.Length <= 1 {
 		return fmt.Sprintf("%d", sc.Number)
 	}
-	return fmt.Sprintf("%d.%d", sc.Number, sc.Part)
+	return fmt.Sprintf("%d.%d", sc.Number, sc.part())
 }
 
 func (sc *SessionClass) IofN() string {
 	if sc.Length <= 1 {
 		return ""
 	}
-	return fmt.Sprintf(" (%d of %d)", sc.Part, sc.Length)
+	return fmt.Sprintf(" (%d of %d)", sc.part(), sc.Length)
+}
+
+func (sc *SessionClass) part() int {
+	return sc.Session - sc.Start() + 1
 }
 
 func (sc *SessionClass) EvaluationCode() string {
 	codes := strings.Split(sc.EvaluationCodes, ",")
-	if 1 <= sc.Part && sc.Part <= len(codes) {
-		return strings.TrimSpace(codes[sc.Part-1])
+	i := sc.Session - sc.Start()
+	if 0 <= i && i < len(codes) {
+		return strings.TrimSpace(codes[i])
 	}
 	return ""
 }
 
+type ClassInfo struct {
+	classes []*Class
+	number  map[int]*Class
+
+	evalCode struct {
+		once  sync.Once
+		value map[string]*SessionClass
+	}
+
+	sessions struct {
+		once  sync.Once
+		value [][]*SessionClass
+	}
+}
+
+func NewClassInfo(classes []*Class) *ClassInfo {
+	SortClasses(classes, "")
+	ci := &ClassInfo{
+		classes: classes,
+		number:  make(map[int]*Class),
+	}
+	for _, c := range classes {
+		ci.number[c.Number] = c
+	}
+	return ci
+}
+
+func (ci *ClassInfo) Classes() []*Class {
+	return ci.classes
+}
+
+func (ci *ClassInfo) LookupNumber(number int) *Class {
+	return ci.number[number]
+}
+
+func (ci *ClassInfo) LookupEvaluationCode(evaluationCode string) *SessionClass {
+	ci.evalCode.once.Do(func() {
+		ci.evalCode.value = make(map[string]*SessionClass)
+		for _, c := range ci.classes {
+			for i, code := range strings.Split(c.EvaluationCodes, ",") {
+				code = strings.TrimSpace(code)
+				ci.evalCode.value[code] = &SessionClass{Class: c, Session: c.Start() + i}
+			}
+		}
+	})
+	return ci.evalCode.value[evaluationCode]
+}
+
+func (ci *ClassInfo) Sessions() [][]*SessionClass {
+	ci.sessions.once.Do(func() {
+		ci.sessions.value = make([][]*SessionClass, NumSession)
+		for _, c := range ci.classes {
+			start, end := c.StartEnd()
+			for i := start; i <= end; i++ {
+				if i >= NumSession {
+					continue
+				}
+				ci.sessions.value[i] = append(ci.sessions.value[i], &SessionClass{Class: c, Session: i})
+			}
+		}
+	})
+	return ci.sessions.value
+}
+
 var noClass = &Class{Title: "No Class", Length: 1}
 
-func (cms *ClassMaps) ParticipantSessionClasses(p *Participant) []*SessionClass {
+func (ci *ClassInfo) ParticipantSessionClasses(p *Participant) []*SessionClass {
 	sessionClasses := make([]*SessionClass, NumSession)
 	for i := range sessionClasses {
 		sessionClasses[i] = &SessionClass{Session: i, Class: noClass}
 	}
 	for _, n := range p.Classes {
-		c := cms.ClassByNumber[n]
+		c := ci.LookupNumber(n)
 		if c == nil {
 			log.Printf("unknown class %d for participant %v", n, p.ID)
 			continue
@@ -79,11 +124,10 @@ func (cms *ClassMaps) ParticipantSessionClasses(p *Participant) []*SessionClass 
 		for i := start; i <= end; i++ {
 			sc := sessionClasses[i]
 			sc.Class = c
-			sc.Part = i - start + 1
 		}
 	}
 	for _, ic := range p.InstructorClasses {
-		c := cms.ClassByNumber[ic.Class]
+		c := ci.LookupNumber(ic.Class)
 		if c == nil {
 			log.Printf("unknown instructor class %d for participant %v", ic.Class, p.ID)
 			continue
@@ -94,7 +138,6 @@ func (cms *ClassMaps) ParticipantSessionClasses(p *Participant) []*SessionClass 
 		}
 		sc := sessionClasses[ic.Session]
 		sc.Class = c
-		sc.Part = ic.Session - c.Start() + 1
 		sc.Instructor = true
 	}
 	return sessionClasses

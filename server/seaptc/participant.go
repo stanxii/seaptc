@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -56,7 +57,7 @@ const (
 )
 
 func (svc *participantService) serviceState(rc *requestContext) (int, *model.Conference, error) {
-	conf, err := svc.store.GetCachedConference(rc.context())
+	conf, err := svc.store.GetCachedConference(rc.ctx)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -131,12 +132,12 @@ func (svc *participantService) serveHome(rc *requestContext, conf *model.Confere
 		EvaluatedConference bool
 	}
 
-	classMaps, err := svc.store.GetCachedClassMaps(rc.context())
+	classInfo, err := svc.store.GetCachedClassInfo(rc.ctx)
 	if err != nil {
 		return err
 	}
 
-	data.Conference, err = svc.store.GetCachedConference(rc.context())
+	data.Conference, err = svc.store.GetCachedConference(rc.ctx)
 	if err != nil {
 		return err
 	}
@@ -145,21 +146,33 @@ func (svc *participantService) serveHome(rc *requestContext, conf *model.Confere
 
 	g.Go(func() error {
 		var err error
-		data.Participant, err = svc.store.GetParticipant(rc.context(), rc.participantID)
+		data.Participant, err = svc.store.GetParticipant(rc.ctx, rc.participantID)
 		if err != nil {
 			return err
 		}
-		data.SessionClasses = classMaps.ParticipantSessionClasses(data.Participant)
-
+		data.SessionClasses = classInfo.ParticipantSessionClasses(data.Participant)
 		data.Lunch = conf.ParticipantLunch(data.Participant)
 		return nil
 	})
 
 	g.Go(func() error {
-		var err error
-		data.EvaluatedConference, data.EvaluatedClasses, err = svc.store.GetRecordedEvaluations(
-			rc.context(), rc.participantID, classMaps)
-		return err
+		status, err := svc.store.GetEvaluationStatus(rc.ctx, rc.participantID)
+		if err != nil {
+			return err
+		}
+		data.EvaluatedConference = status.Conference
+		for i, classNumber := range status.ClassNumbers {
+			if classNumber != 0 {
+				c := classInfo.LookupNumber(classNumber)
+				if c != nil {
+					data.EvaluatedClasses = append(data.EvaluatedClasses, &model.SessionClass{
+						Class:   c,
+						Session: i,
+					})
+				}
+			}
+		}
+		return nil
 	})
 
 	if err := g.Wait(); err != nil {
@@ -171,7 +184,7 @@ func (svc *participantService) serveHome(rc *requestContext, conf *model.Confere
 
 func (svc *participantService) serveHomeLogin(rc *requestContext, conf *model.Conference) error {
 	loginCode := rc.request.FormValue("loginCode")
-	participant, err := svc.store.GetParticipantForLoginCode(rc.context(), loginCode)
+	participant, err := svc.store.GetParticipantForLoginCode(rc.ctx, loginCode)
 	switch {
 	case err == nil:
 		svc.participantIDCodec.Encode(rc.response, participant.ID, participant.Name())
@@ -182,12 +195,10 @@ func (svc *participantService) serveHomeLogin(rc *requestContext, conf *model.Co
 	}
 
 	var data = struct {
-		Participant *model.Participant
-		Conference  *model.Conference
-		LoginCode   string
-		Invalid     bool
+		Conference *model.Conference
+		LoginCode  string
+		Invalid    bool
 	}{
-		nil,
 		conf,
 		loginCode,
 		rc.request.Method == "POST" || loginCode != "",
@@ -220,12 +231,17 @@ func (svc *participantService) Serve_eval(rc *requestContext) error {
 		return nil
 	}
 
+	classInfo, err := svc.store.GetCachedClassInfo(rc.ctx)
+	if err != nil {
+		return err
+	}
+
 	rc.request.ParseForm()
 	data := struct {
 		Form               url.Values
 		Invalid            map[string]string
 		SessionClass       *model.SessionClass
-		EvaluateClass      bool
+		EvaluateSession    bool
 		EvaluateConference bool
 	}{
 		Form:    rc.request.Form,
@@ -237,46 +253,79 @@ func (svc *participantService) Serve_eval(rc *requestContext) error {
 	if evaluationCode == "conference" {
 		data.EvaluateConference = true
 	} else {
-		classMaps, err := svc.store.GetCachedClassMaps(rc.context())
-		if err != nil {
-			return err
-		}
-		data.SessionClass = classMaps.SessionClassByEvaluationCode[evaluationCode]
+		data.SessionClass = classInfo.LookupEvaluationCode(evaluationCode)
 		if data.SessionClass == nil {
 			if rc.request.FormValue("submit") != "" {
 				data.Invalid["evaluationCode"] = "Class not found"
 			}
 			return rc.respond(svc.templates.Eval1, http.StatusOK, &data)
 		}
-		data.EvaluateClass = true
+		data.EvaluateSession = true
 		data.EvaluateConference = data.SessionClass.Session == model.NumSession-1
 	}
 
 	if rc.request.Method != "POST" {
-		// Respond with form filled with previously entered feedback.
+		// Fill form from database.
 
-		if data.EvaluateClass {
-			classEvaluation, err := svc.store.GetClassEvaluation(rc.context(), rc.participantID, data.SessionClass.Session)
-			switch {
-			case err == store.ErrNotFound:
-				// do nothing
-			case err != nil:
+		var (
+			g                    errgroup.Group
+			sessionEvaluation    *model.SessionEvaluation
+			conferenceEvaluation *model.ConferenceEvaluation
+			isInstructor         bool
+		)
+
+		if data.EvaluateSession {
+
+			g.Go(func() error {
+				var err error
+				sessionEvaluation, err = svc.store.GetSessionEvaluation(rc.ctx, rc.participantID, data.SessionClass.Session)
+				if err == store.ErrNotFound {
+					sessionEvaluation = nil
+					err = nil
+				}
 				return err
-			case classEvaluation.Class == data.SessionClass.Number:
-				setClassEvaluationForm(data.Form, classEvaluation, "")
-			}
+			})
+
+			g.Go(func() error {
+				// Determine if participant is isntructor for the class.
+				participant, err := svc.store.GetParticipant(rc.ctx, rc.participantID)
+				if err != nil {
+					return err
+				}
+				sessionClass := classInfo.ParticipantSessionClasses(participant)[data.SessionClass.Session]
+				isInstructor = sessionClass.Instructor && sessionClass.Class == data.SessionClass.Class
+				return nil
+			})
 		}
 
 		if data.EvaluateConference {
-			conferenceEvaluation, err := svc.store.GetConferenceEvaluation(rc.context(), rc.participantID)
-			switch {
-			case err == store.ErrNotFound:
-				// do nothing
-			case err != nil:
+			g.Go(func() error {
+				var err error
+				conferenceEvaluation, err = svc.store.GetConferenceEvaluation(rc.ctx, rc.participantID)
+				if err == store.ErrNotFound {
+					conferenceEvaluation = nil
+					err = nil
+				}
 				return err
-			default:
-				setConferenceEvaluationForm(data.Form, conferenceEvaluation)
-			}
+			})
+		}
+
+		if err := g.Wait(); err != nil {
+			return err
+		}
+
+		if isInstructor {
+			data.Form.Set("isInstructor", "yes")
+		}
+
+		if sessionEvaluation != nil && sessionEvaluation.ClassNumber == data.SessionClass.Number {
+			setSessionEvaluationForm(data.Form, sessionEvaluation, "")
+			data.Form.Set("hash", sessionEvaluation.HashEditFields())
+		}
+
+		if conferenceEvaluation != nil {
+			setConferenceEvaluationForm(data.Form, conferenceEvaluation)
+			data.Form.Set("chash", conferenceEvaluation.HashEditFields())
 		}
 
 		return rc.respond(svc.templates.Eval2, http.StatusOK, &data)
@@ -285,24 +334,26 @@ func (svc *participantService) Serve_eval(rc *requestContext) error {
 	getRating := func(name string, required bool) int {
 		n, _ := strconv.Atoi(rc.request.FormValue(name))
 		if required && (n < 1 || n > 4) {
-			data.Invalid[name] = "is-invalid"
+			data.Invalid[name] = "invalid"
 		}
 		return n
 	}
 
-	var classEvaluation *model.ClassEvaluation
-	if data.EvaluateClass {
-		classEvaluation = &model.ClassEvaluation{
-			ParticipantID:      rc.participantID,
-			Session:            data.SessionClass.Session,
-			Class:              data.SessionClass.Number,
-			Updated:            time.Now().In(model.TimeLocation),
-			Source:             "online",
-			KnowledgeRating:    getRating("knowledge", true),
-			PresentationRating: getRating("presentation", true),
-			UsefulnessRating:   getRating("usefulness", true),
-			OverallRating:      getRating("overall", true),
-			Comments:           strings.TrimSpace(rc.request.FormValue("comments")),
+	var sessionEvaluation *model.SessionEvaluation
+	if data.EvaluateSession {
+		sessionEvaluation = &model.SessionEvaluation{
+			ParticipantID: rc.participantID,
+			Session:       data.SessionClass.Session,
+			ClassNumber:   data.SessionClass.Number,
+			Updated:       time.Now().In(model.TimeLocation),
+			Source:        "participant",
+			Comments:      strings.TrimSpace(rc.request.FormValue("comments")),
+		}
+		if data.Form.Get("isInstructor") == "" {
+			sessionEvaluation.KnowledgeRating = getRating("knowledge", true)
+			sessionEvaluation.PresentationRating = getRating("presentation", true)
+			sessionEvaluation.UsefulnessRating = getRating("usefulness", true)
+			sessionEvaluation.OverallRating = getRating("overall", true)
 		}
 	}
 
@@ -311,7 +362,7 @@ func (svc *participantService) Serve_eval(rc *requestContext) error {
 		conferenceEvaluation = &model.ConferenceEvaluation{
 			ParticipantID:           rc.participantID,
 			Updated:                 time.Now().In(model.TimeLocation),
-			Source:                  "online",
+			Source:                  "participant",
 			ExperienceRating:        getRating("experience", false),
 			PromotionRating:         getRating("promotion", false),
 			RegistrationRating:      getRating("registration", false),
@@ -331,31 +382,26 @@ func (svc *participantService) Serve_eval(rc *requestContext) error {
 		return rc.respond(svc.templates.Eval2, http.StatusOK, &data)
 	}
 
-	if classEvaluation != nil {
-		err := svc.store.SetClassEvaluation(rc.context(), classEvaluation)
-		if err != nil {
-			return err
-		}
+	var description []string
+	var g errgroup.Group
+
+	if sessionEvaluation != nil {
+		description = append(description, fmt.Sprintf("session %d", sessionEvaluation.Session+1))
+		g.Go(func() error {
+			return svc.store.SetSessionEvaluations(rc.ctx, []*model.SessionEvaluation{sessionEvaluation})
+		})
 	}
 
 	if conferenceEvaluation != nil {
-		err := svc.store.SetConferenceEvaluation(rc.context(), conferenceEvaluation)
-		if err != nil {
-			return err
-		}
+		description = append(description, "the conference")
+		g.Go(func() error { return svc.store.SetConferenceEvaluation(rc.ctx, conferenceEvaluation) })
 	}
 
-	switch {
-	case classEvaluation != nil && conferenceEvaluation != nil:
-		return rc.redirect("/", "info", "Evaluation recorded for session %d and the conference.", classEvaluation.Session+1)
-	case classEvaluation != nil:
-		return rc.redirect("/", "info", "Evaluation recorded for session %d.", classEvaluation.Session+1)
-	case conferenceEvaluation != nil:
-		return rc.redirect("/", "info", "Evaluation recorded for the conference.")
-	default:
-		http.Redirect(rc.response, rc.request, "/", http.StatusSeeOther)
-		return nil
+	if err := g.Wait(); err != nil {
+		return err
 	}
+
+	return rc.redirect("/", "info", "Evaluation recorded for %s.", strings.Join(description, " and "))
 }
 
 func ratingString(n int) string {
@@ -365,7 +411,7 @@ func ratingString(n int) string {
 	return strconv.Itoa(n)
 }
 
-func setClassEvaluationForm(form url.Values, e *model.ClassEvaluation, suffix string) {
+func setSessionEvaluationForm(form url.Values, e *model.SessionEvaluation, suffix string) {
 	form.Set("knowledge"+suffix, ratingString(e.KnowledgeRating))
 	form.Set("presentation"+suffix, ratingString(e.PresentationRating))
 	form.Set("usefulness"+suffix, ratingString(e.UsefulnessRating))
@@ -376,7 +422,7 @@ func setClassEvaluationForm(form url.Values, e *model.ClassEvaluation, suffix st
 func setConferenceEvaluationForm(form url.Values, e *model.ConferenceEvaluation) {
 	form.Set("experience", ratingString(e.ExperienceRating))
 	form.Set("promotion", ratingString(e.PromotionRating))
-	form.Set("onlineRegistration", ratingString(e.RegistrationRating))
+	form.Set("registration", ratingString(e.RegistrationRating))
 	form.Set("checkin", ratingString(e.CheckinRating))
 	form.Set("midway", ratingString(e.MidwayRating))
 	form.Set("lunch", ratingString(e.LunchRating))
@@ -385,5 +431,5 @@ func setConferenceEvaluationForm(form url.Values, e *model.ConferenceEvaluation)
 	form.Set("signageWayfinding", ratingString(e.SignageWayfindingRating))
 	form.Set("learnTopics", e.LearnTopics)
 	form.Set("teachTopics", e.TeachTopics)
-	form.Set("overallComments", e.Comments)
+	form.Set("comments", e.Comments)
 }

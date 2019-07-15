@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -121,7 +122,7 @@ func newApplication(ctx context.Context, st *store.Store, devMode bool, assetDir
 func (a *application) isStaff(ctx context.Context, staffID string) bool {
 	conf, err := a.store.GetCachedConference(ctx)
 	if err != nil {
-		log.Println("error getting conference for staffIDs: %v", err)
+		log.Printf("error getting conference for staffIDs: %v", err)
 		return false
 	}
 	return conf.IsStaff(staffID)
@@ -145,6 +146,7 @@ func (h *handler) ServeHTTP(response http.ResponseWriter, request *http.Request)
 		application: a,
 		response:    response,
 		request:     request,
+		ctx:         newContextWithTraceID(request.Context(), request),
 	}
 
 	if err := a.staffIDCodec.Decode(rc.request, &rc.staffID); err != nil {
@@ -167,7 +169,7 @@ func (h *handler) ServeHTTP(response http.ResponseWriter, request *http.Request)
 
 	if rc.staffID != "" {
 		rc.isAdmin = a.adminIDs[rc.staffID]
-		rc.isStaff = rc.isAdmin || a.isStaff(rc.context(), rc.staffID)
+		rc.isStaff = rc.isAdmin || a.isStaff(rc.ctx, rc.staffID)
 	}
 
 	rc.logf("staffID=%q, participantID=%q", rc.staffID, rc.participantID)
@@ -184,12 +186,12 @@ func (h *handler) respondError(rc *requestContext, err error) {
 	if e.Status >= 500 {
 		severity = "ERROR"
 	}
-	logf(severity, rc.request.Header, "%d: %s, %v", e.Status, e.Message, e.Err)
+	logf(rc.ctx, severity, "%d: %s, %v", e.Status, e.Message, e.Err)
 
 	if t := h.svc.errorTemplate(); t != nil {
 		err := rc.respond(h.svc.errorTemplate(), e.Status, e)
 		if err != nil {
-			logf("ERROR", rc.request.Header, "error rendering error template: %v", err)
+			logf(rc.ctx, "ERROR", "error rendering error template: %v", err)
 		} else {
 			return
 		}
@@ -202,8 +204,7 @@ type requestContext struct {
 	application *application
 	request     *http.Request
 	response    http.ResponseWriter
-
-	logPrefix string
+	ctx         context.Context
 
 	staffID          string
 	isAdmin, isStaff bool
@@ -214,13 +215,13 @@ type requestContext struct {
 func (rc *requestContext) redirect(path string, flashKind string, flashFormat string, flashArgs ...interface{}) error {
 	rc.setFlashMessage(flashKind, flashFormat, flashArgs...)
 	if p := rc.request.FormValue("_ref"); p != "" {
-		path = p
+		if u, err := url.ParseRequestURI(p); err == nil && u.Host == "" {
+			path = u.RequestURI()
+		}
 	}
 	http.Redirect(rc.response, rc.request, path, http.StatusSeeOther)
 	return nil
 }
-
-func (rc *requestContext) context() context.Context { return rc.request.Context() }
 
 func (rc *requestContext) setFlashMessage(kind, format string, args ...interface{}) {
 	a := rc.application
@@ -240,5 +241,5 @@ func (rc *requestContext) xsrfToken(path string) string {
 }
 
 func (rc *requestContext) logf(format string, args ...interface{}) {
-	logf("INFO", rc.request.Header, format, args...)
+	logf(rc.ctx, "INFO", format, args...)
 }

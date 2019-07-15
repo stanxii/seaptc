@@ -402,7 +402,7 @@ div {
     {{range $sessionClasses}}
       <tr class="btb">
         <td rowspan="2">
-          <div class="feedbackSticker">{{if .Number}}Stick {{.Number}}{{if gt .Length 1}}.{{.Part}}{{end}} attendance<br> sticker from instructor here.{{else}}&nbsp;<br>&nbsp;{{end}}</div>
+          <div class="feedbackSticker">{{if .Number}}Stick {{.NumberDotPart}} attendance<br> sticker from instructor here.{{else}}&nbsp;<br>&nbsp;{{end}}</div>
         </td>
         <td colspan="5" class="feedbackClassName">{{template "classTitle" .}}</td>
       </tr>

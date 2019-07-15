@@ -1,60 +1,87 @@
-{{define "title"}}PTC: Danger Zone{{end}}
+{{define "title"}}PTC: Adminstration{{end}}
 {{define "body"}}{{with $.Data}}
 
 {{template "refreshClassesButton" $}}
 
-<form class="form-inline mb-3" action="/dashboard/rebuildCatalog" class="form-inline" method="post">
-   {{$.XSRFToken "/dashboard/rebuildCatalog"}}
-  <input type="hidden" name="_ref" value="{{$.Request.URL.RequestURI}}">
-  <div>
-  <button type="submit" class="btn btn-outline-secondary">Rebuild catalog</button>
-  </div>
-  {{if .DevMode}}
-    <small class="ml-3 text-muted">
-      Add ?build to catalog page URLs to force build on view.
-      Example: <a href="/catalog/?build">/catalog/?build</a>.
-    </small>
-  {{end}}
-</form>
-
-<form class="form-inline mb-3" action="/dashboard/uploadRegistrations" enctype="multipart/form-data" method="POST">
-  {{$.XSRFToken "/dashboard/uploadRegistrations"}}
-  <input type="hidden" name="_ref" value="{{$.Request.URL.RequestURI}}">
-  <div class="input-group form-group">
-    <div class="custom-file">
-      <input type="file" id="file" name="file" class="custom-file-input" required>
-      <label class="custom-file-label form-control mr-2" for="file">Choose File</label>
+{{if $.IsAdmin}}
+  <form class="form-inline mb-3" action="/dashboard/rebuildCatalog" class="form-inline" method="post">
+     {{$.XSRFToken "/dashboard/rebuildCatalog"}}
+    <input type="hidden" name="_ref" value="{{$.Request.URL.RequestURI}}">
+    <div>
+    <button type="submit" class="btn btn-outline-secondary">Rebuild catalog</button>
     </div>
-    <div class="input-group-append">
-      <button type="submit" class="input-group-text">Upload Registrations</button>
+    {{if .DevMode}}
+      <small class="ml-3 text-muted">
+        Add ?build to catalog page URLs to force build on view.
+        Example: <a href="/catalog/?build">/catalog/?build</a>.
+      </small>
+    {{end}}
+  </form>
+{{end}}
+
+{{if $.IsAdmin}}
+  <form class="form-inline mb-3" action="/dashboard/uploadRegistrations" enctype="multipart/form-data" method="POST">
+    {{$.XSRFToken "/dashboard/uploadRegistrations"}}
+    <input type="hidden" name="_ref" value="{{$.Request.URL.RequestURI}}">
+    <div class="input-group form-group">
+      <div class="custom-file">
+        <input type="file" id="file" name="file" class="custom-file-input" required>
+        <label class="custom-file-label form-control mr-2" for="file">Choose File</label>
+      </div>
+      <div class="input-group-append">
+        <button type="submit" class="input-group-text">Upload Registrations</button>
+      </div>
     </div>
-  </div>
-</form>
+  </form>
+{{end}}
 
-<p><b>Export:</b> <a href="/dashboard/exportParticipants">Participants</a>
-  | <a href="/dashboard/exportClasses">Classes</a>
+{{if $.IsAdmin}}
+  <p><b>Export:</b> <a href="/dashboard/exportParticipants">Participants</a>
+    | <a href="/dashboard/exportClasses">Classes</a>
+    | <a href="/dashboard/exportConferenceEvaluations">ConferenceEvaluations</a>
+    | <a href="/dashboard/exportSessionEvaluations">SessionEvaluations</a>
+{{end}}
 
+{{if $.IsAdmin}}
 <p><b>Edit:</b> <a href="/dashboard/conference">Conference</a>
+{{end}}
 
 <p><b>Forms:</b> <a href="/dashboard/reprintForms">Reprint</a>
-  | <a href="/dashboard/forms?options=batch">Batch Print</a>
-  | <a href="/dashboard/forms?options=auto">Auto Print</a>
-  {{if .DevMode}}
-    | <a href="/dashboard/forms?options=first">Debug First</a>
-    | <a href="/dashboard/forms?options=last">Debug Last</a>
+  {{if $.IsAdmin}}
+    | <a href="/dashboard/forms?options=batch">Batch Print</a>
+    | <a href="/dashboard/forms?options=auto">Auto Print</a>
+    {{if .DevMode}}
+      | <a href="/dashboard/forms?options=first">Debug First</a>
+      | <a href="/dashboard/forms?options=last">Debug Last</a>
+    {{end}}
   {{end}}
 
 <p><b>Lunch:</b> <a href="/dashboard/lunchCount">Count</a>
-  | <a href="/dashboard/lunchList">List</a>
-  | <a href="/dashboard/lunchStickers">Stickers</a>
+  {{if $.IsAdmin}}
+    | <a href="/dashboard/lunchList">List</a>
+    | <a href="/dashboard/lunchStickers">Stickers</a>
+  {{end}}
 
 <p><b>Miscellaneous:</b> <a href="/dashboard/evalCodes">Access tokens &amp; evaluation codes</a>
 
-<p><b>Participant Debug Time:</b>
-  <a href="/dashboard/setDebugTime?time=before">Before</a>
-  | <a href="/dashboard/setDebugTime?time=open">Open</a>
-  | <a href="/dashboard/setDebugTime?time=grace">Grace</a>
-  | <a href="/dashboard/setDebugTime?time=after">After</a>
-  | <a href="/dashboard/setDebugTime">Clear</a>
+{{if $.IsAdmin}}
+  <p><b>Participant Debug Time:</b>
+    <a href="/dashboard/setDebugTime?time=before">Before</a>
+    | <a href="/dashboard/setDebugTime?time=open">Open</a>
+    | <a href="/dashboard/setDebugTime?time=grace">Grace</a>
+    | <a href="/dashboard/setDebugTime?time=after">After</a>
+    | <a href="/dashboard/setDebugTime">Clear</a>
+{{end}}
+
+{{if $.IsAdmin}}
+  <div><b>Evaluations:</b>
+    <a href="/dashboard/evaluations">List</a>
+    | <form class="d-inline form-inline" action="/dashboard/evalCode">
+      <input type="submit" class="d-none">
+      <input type="number" class="form-control form-control-sm" autocomplete="off"  name="loginCode" placeholder="enter login code">
+    </form>
+    | <a href="/dashboard/report">Report</a>
+  </div>
+{{end}}
 
 {{end}}{{end}}

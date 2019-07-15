@@ -180,7 +180,7 @@ func (store *Store) ImportClasses(ctx context.Context, classes []*model.Class) (
 		return err
 	})
 
-	store.classMapsCache.clear()
+	store.classInfoCache.clear()
 	return mutationCount, err
 }
 

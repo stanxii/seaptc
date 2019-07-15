@@ -4,7 +4,8 @@
 
 {{with .Participant}}
   {{if $.IsAdmin}}
-    <a class="float-right btn btn-outline-secondary d-print-none" href="/dashboard/forms/{{.ID}}">Form</a>
+    <a class="mx-1 float-right btn btn-outline-secondary d-print-none" href="/dashboard/forms/{{.ID}}">Form</a>
+    <a class="mx-1 float-right btn btn-outline-secondary d-print-none" href="/dashboard/evaluations/{{.ID}}">Eval</a>
   {{end}}
   <h3>{{.Name}}{{with .Nickname}} ({{.}}){{end}}</h3>
   <p>
@@ -17,8 +18,8 @@
     <tr><th>OA Banquet</th><td>{{if .OABanquet}}yes{{else}}no{{end}}</td></tr>
     <tr><th>Lunch</th><td>{{$.Data.Lunch.Name}}{{with $.Data.Lunch.Location}} @ {{.}}{{end}}</td></tr>
     {{if $.IsAdmin}}
-      <tr><th>Login Code</th><td><a href="/?loginCode={{.LoginCode}}">{{.LoginCode}}</a></td></tr>
-      <tr><th>Dietary Rest.</th><td>{{.DietaryRestrictions}}</td></tr>
+      <tr><th>Login Code</th><td><a href="/dashboard/setDebugTime?time=open&_ref=/%3FloginCode={{.LoginCode}}">{{.LoginCode}}</a></td></tr>
+       <tr><th>Dietary Rest.</th><td>{{.DietaryRestrictions}}</td></tr>
       <tr><th>Show QR Code</th><td>{{if .ShowQRCode}}yes{{else}}no{{end}}</td></tr>
       <tr><th>Print queued</th><td>{{if .PrintForm}}yes{{else}}no{{end}}</td></tr>
       <tr><th>Phone</th><td>{{.Phone}}</td></tr>

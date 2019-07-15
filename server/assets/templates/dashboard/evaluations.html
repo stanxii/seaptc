@@ -1,0 +1,32 @@
+{{define "title"}}PTC: Evaluations{{end}}
+{{define "body"}}{{with $.Data}}
+<h3>Evaluations</h3>
+<table class="table table-sm">
+  <thead>
+    <tr>
+      <th>{{$.Sort "Name" "!name"}}</th>
+      <th class="text-right">1</th>
+      <th class="text-right">2</th>
+      <th class="text-right">3</th>
+      <th class="text-right">4</th>
+      <th class="text-right">5</th>
+      <th class="text-right">6</th>
+      <th>{{$.Sort "Conference" "hasEval"}}</th>
+    </tr>
+  <thead>
+  <tbody>
+    {{- range .Participants -}}
+      <tr>
+        <td class="text-nowrap"><a href="/dashboard/evaluations/{{.ID}}">{{.Name}}</a></td>
+        {{with index $.Data.EvaluationStatus .ID}}
+          {{range .ClassNumbers}}<td>{{if .}}<a href="/dashboard/classes/{{.}}">{{.}}</a>{{end}}</td>{{end}}
+          <td>{{if .Conference}}✓{{end}}</td>
+        {{else}}
+          <td></td>
+          <td colspan="6"></td>
+        {{end}}
+      </tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}{{end}}

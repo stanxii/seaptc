@@ -6,23 +6,29 @@
 <form method="POST" class="mb-3">
   {{$.XSRFToken $.Request.URL.Path}}
   <input type="hidden" name="evaluationCode" value="{{.Form.Get "evaluationCode"}}">
+  <input type="hidden" name="isInstructor" value="{{.Form.Get "isInstructor"}}">
 
-  {{if .EvaluateClass}}
+  {{if .EvaluateSession}}
     {{with .SessionClass}}
       <h5>{{.Number}}: {{.ShortTitle}}{{.IofN}}</h5>
     {{end}}
-    <p>Evaluate your session {{add .SessionClass.Session 1}} class. The items marked with a * are required.
-    {{template "rating" args . "knowledge" "Instructor's knowledge of course material *" "Provide a rating for the instructor's knowledge of course material."}}
-    {{template "rating" args . "presentation" "Presentation of material *" "Provide a rating for the presentation of material."}}
-    {{template "rating" args . "usefulness" "Usefulness of topic *" "Provide a rating for the usefulness of topic."}}
-    {{template "rating" args . "overall" "Session overall *" "Provide a rating for the session overall."}}
-    {{template "textarea" args . "comments" "Comments about the session"}}
+    {{if .Form.Get "isInstructor"}}
+      <p>Thank you for teaching this class.
+      {{template "textarea" args . "comments" "Comments about the session"}}
+    {{else}}
+      <p>Evaluate your session {{add .SessionClass.Session 1}} class. The items marked with a * are required.
+      {{template "rating" args . "knowledge" "Instructor's knowledge of course material *" "Provide a rating for the instructor's knowledge of course material."}}
+      {{template "rating" args . "presentation" "Presentation of material *" "Provide a rating for the presentation of material."}}
+      {{template "rating" args . "usefulness" "Usefulness of topic *" "Provide a rating for the usefulness of topic."}}
+      {{template "rating" args . "overall" "Session overall *" "Provide a rating for the session overall."}}
+      {{template "textarea" args . "comments" "Comments about the session"}}
+    {{end}}
     <hr>
   {{end}}
 
   {{if .EvaluateConference}}
     <h5>Conference</h5>
-    {{if .EvaluateClass}}
+    {{if .EvaluateSession}}
       <p>This is the last class of the day. Evaluate the entire Program and Training Conference.
      {{else}}
       <p>Evaluate the entire Program and Training Conference. Wait until you

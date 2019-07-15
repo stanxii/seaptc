@@ -28,7 +28,7 @@ func SetupFlags() {
 
 type Store struct {
 	dsClient        *datastore.Client
-	classMapsCache  valueCache
+	classInfoCache  valueCache
 	conferenceCache valueCache
 }
 
@@ -229,11 +229,11 @@ func (store *Store) GetCachedConference(ctx context.Context) (*model.Conference,
 	return conf, err
 }
 
-func (store *Store) GetCachedClassMaps(ctx context.Context) (*model.ClassMaps, error) {
-	v, err := store.classMapsCache.get(ctx, 15*time.Minute, func() (interface{}, error) {
+func (store *Store) GetCachedClassInfo(ctx context.Context) (*model.ClassInfo, error) {
+	v, err := store.classInfoCache.get(ctx, 15*time.Minute, func() (interface{}, error) {
 		classes, err := store.GetAllClasses(ctx)
-		return model.NewClassMaps(classes), err
+		return model.NewClassInfo(classes), err
 	})
-	cms, _ := v.(*model.ClassMaps)
+	cms, _ := v.(*model.ClassInfo)
 	return cms, err
 }

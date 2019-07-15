@@ -18,7 +18,7 @@
       <a class="nav-item nav-link {{if eq $path "/dashboard/classes"}} active{{end}}" href="/dashboard/classes">Classes</a>
       {{if .IsStaff}}<a class="nav-item nav-link {{if eq $path "/dashboard/participants"}} active{{end}}" href="/dashboard/participants">Participants</a>{{end}}
       {{if .IsStaff}}<a class="nav-item nav-link {{if eq $path "/dashboard/instructors"}} active{{end}}" href="/dashboard/instructors">Instructors</a>{{end}}
-      {{if .IsAdmin}}<a class="nav-item nav-link {{if eq $path "/dashboard/admin"}} active{{end}}" href="/dashboard/admin">Admin</a>{{end}}
+      {{if .IsStaff}}<a class="nav-item nav-link {{if eq $path "/dashboard/admin"}} active{{end}}" href="/dashboard/admin">Admin</a>{{end}}
     </div>
     {{- if .IsStaff}}
       <a class="nav-item btn btn-outline-light" href="/dashboard/logout">Logout</a>

@@ -2,15 +2,20 @@
 
 package model
 
+import (
+	"crypto/md5"
+	"encoding/hex"
+)
+
 const (
-	ClassEvaluation_Class              = "class"
-	ClassEvaluation_Comments           = "comments"
-	ClassEvaluation_KnowledgeRating    = "knowledge"
-	ClassEvaluation_OverallRating      = "overall"
-	ClassEvaluation_PresentationRating = "promotion"
-	ClassEvaluation_Source             = "source"
-	ClassEvaluation_Updated            = "updated"
-	ClassEvaluation_UsefulnessRating   = "usefulness"
+	SessionEvaluation_ClassNumber        = "classNumber"
+	SessionEvaluation_Comments           = "comments"
+	SessionEvaluation_KnowledgeRating    = "knowledge"
+	SessionEvaluation_OverallRating      = "overall"
+	SessionEvaluation_PresentationRating = "promotion"
+	SessionEvaluation_Source             = "source"
+	SessionEvaluation_Updated            = "updated"
+	SessionEvaluation_UsefulnessRating   = "usefulness"
 )
 
 const (
@@ -29,3 +34,77 @@ const (
 	ConferenceEvaluation_Updated                 = "updated"
 	ConferenceEvaluation_WebsiteRating           = "website"
 )
+
+func (x *SessionEvaluation) CopyEditFieldsTo(y *SessionEvaluation) {
+	y.Comments = x.Comments
+	y.KnowledgeRating = x.KnowledgeRating
+	y.OverallRating = x.OverallRating
+	y.PresentationRating = x.PresentationRating
+	y.UsefulnessRating = x.UsefulnessRating
+}
+
+func (x *SessionEvaluation) EqualEditFields(y *SessionEvaluation) bool {
+	return x.Comments == y.Comments &&
+		x.KnowledgeRating == y.KnowledgeRating &&
+		x.OverallRating == y.OverallRating &&
+		x.PresentationRating == y.PresentationRating &&
+		x.UsefulnessRating == y.UsefulnessRating
+}
+
+func (x *SessionEvaluation) HashEditFields() string {
+	h := md5.New()
+	hashValue(h, "84d3acd56f885b660d7afc79cf277afe")
+	hashValue(h, x.Comments)
+	hashValue(h, x.KnowledgeRating)
+	hashValue(h, x.OverallRating)
+	hashValue(h, x.PresentationRating)
+	hashValue(h, x.UsefulnessRating)
+	sum := h.Sum(nil)
+	return hex.EncodeToString(sum[:])
+}
+
+func (x *ConferenceEvaluation) CopyEditFieldsTo(y *ConferenceEvaluation) {
+	y.CheckinRating = x.CheckinRating
+	y.Comments = x.Comments
+	y.FacilitiesRating = x.FacilitiesRating
+	y.LearnTopics = x.LearnTopics
+	y.LunchRating = x.LunchRating
+	y.MidwayRating = x.MidwayRating
+	y.PromotionRating = x.PromotionRating
+	y.RegistrationRating = x.RegistrationRating
+	y.SignageWayfindingRating = x.SignageWayfindingRating
+	y.TeachTopics = x.TeachTopics
+	y.WebsiteRating = x.WebsiteRating
+}
+
+func (x *ConferenceEvaluation) EqualEditFields(y *ConferenceEvaluation) bool {
+	return x.CheckinRating == y.CheckinRating &&
+		x.Comments == y.Comments &&
+		x.FacilitiesRating == y.FacilitiesRating &&
+		x.LearnTopics == y.LearnTopics &&
+		x.LunchRating == y.LunchRating &&
+		x.MidwayRating == y.MidwayRating &&
+		x.PromotionRating == y.PromotionRating &&
+		x.RegistrationRating == y.RegistrationRating &&
+		x.SignageWayfindingRating == y.SignageWayfindingRating &&
+		x.TeachTopics == y.TeachTopics &&
+		x.WebsiteRating == y.WebsiteRating
+}
+
+func (x *ConferenceEvaluation) HashEditFields() string {
+	h := md5.New()
+	hashValue(h, "42a4adc990457911029646bac8d301eb")
+	hashValue(h, x.CheckinRating)
+	hashValue(h, x.Comments)
+	hashValue(h, x.FacilitiesRating)
+	hashValue(h, x.LearnTopics)
+	hashValue(h, x.LunchRating)
+	hashValue(h, x.MidwayRating)
+	hashValue(h, x.PromotionRating)
+	hashValue(h, x.RegistrationRating)
+	hashValue(h, x.SignageWayfindingRating)
+	hashValue(h, x.TeachTopics)
+	hashValue(h, x.WebsiteRating)
+	sum := h.Sum(nil)
+	return hex.EncodeToString(sum[:])
+}

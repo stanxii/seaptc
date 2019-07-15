@@ -128,7 +128,7 @@ func (svc *apiService) Serve_api_sessionEvents_(rc *requestContext) error {
 		return &httperror.Error{Status: http.StatusNotFound, Message: fmt.Sprintf("Class %q not found.", numString)}
 	}
 
-	conf, err := svc.store.GetConference(rc.context())
+	conf, err := svc.store.GetConference(rc.ctx)
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (svc *apiService) Serve_api_sessionEvents_(rc *requestContext) error {
 			21*time.Hour+30*time.Minute,
 			svc.conferenceDate)
 	default:
-		class, err := svc.store.GetClass(rc.context(), number)
+		class, err := svc.store.GetClass(rc.ctx, number)
 		if err == store.ErrNotFound {
 			return &httperror.Error{
 				Status: http.StatusNotFound, Message: fmt.Sprintf("Class %q not found.", numString),
@@ -189,7 +189,7 @@ func (svc *apiService) Serve_api_uploadRegistrations(rc *requestContext) error {
 		return err
 	}
 
-	summary, err := svc.store.ImportParticipants(rc.context(), participants)
+	summary, err := svc.store.ImportParticipants(rc.ctx, participants)
 	if err != nil {
 		return err
 	}

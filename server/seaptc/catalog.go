@@ -62,7 +62,7 @@ func (svc *catalogService) Serve_catalog_(rc *requestContext) error {
 	if svc.devMode {
 		rc.request.ParseForm()
 		if _, ok := rc.request.Form["build"]; ok {
-			changed, total, err := svc.buildCatalog(rc.context())
+			changed, total, err := svc.buildCatalog(rc.ctx)
 			if err != nil {
 				return err
 			}
@@ -81,7 +81,7 @@ func (svc *catalogService) Serve_catalog_(rc *requestContext) error {
 		// Purge stale pages from the in-memory cache. Ensure that all pages
 		// have a cache entry (possibly a nil tombstone) for quick detection of
 		// not found errors.
-		hashes, err := svc.store.GetPageHashes(rc.context())
+		hashes, err := svc.store.GetPageHashes(rc.ctx)
 		if err != nil {
 			return err
 		}
@@ -103,7 +103,7 @@ func (svc *catalogService) Serve_catalog_(rc *requestContext) error {
 	if page == nil {
 		rc.logf("Fetching %s from datastore", path)
 		var err error
-		page, err = svc.store.GetPage(rc.context(), path)
+		page, err = svc.store.GetPage(rc.ctx, path)
 		if err != nil {
 			return err
 		}
@@ -142,7 +142,7 @@ func (svc *catalogService) Serve_dashboard_rebuildCatalog(rc *requestContext) er
 	if !rc.isAdmin {
 		return httperror.ErrForbidden
 	}
-	changed, total, err := svc.buildCatalog(rc.context())
+	changed, total, err := svc.buildCatalog(rc.ctx)
 	if err != nil {
 		return err
 	}
