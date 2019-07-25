@@ -172,7 +172,7 @@ func (h *handler) ServeHTTP(response http.ResponseWriter, request *http.Request)
 		rc.isStaff = rc.isAdmin || a.isStaff(rc.ctx, rc.staffID)
 	}
 
-	rc.logf("staffID=%q, participantID=%q", rc.staffID, rc.participantID)
+	rc.logf("path=%q, staffID=%q, participantID=%q", rc.request.URL.Path, rc.staffID, rc.participantID)
 	err := h.f(&rc)
 	if err != nil {
 		h.respondError(&rc, err)

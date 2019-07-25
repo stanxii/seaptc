@@ -293,105 +293,127 @@ func joinComma(p []string, max int) string {
 
 func (store *Store) ImportParticipants(ctx context.Context, participants []*model.Participant) (string, error) {
 
-	summary := "No changes"
+	hashes := make(map[string]string)
+	for _, p := range participants {
+		hashes[participantID(p)] = p.HashImportFields()
+	}
 
-	_, err := store.dsClient.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
+	var allAdds, allUpdates []string
+	var xhashes map[string]string
+
+	for len(participants) > 0 {
 
 		var adds, updates []string
+		var offset int
 
-		xhashes := make(map[string]string)
-		codes := make(map[string]bool)
+		_, err := store.dsClient.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
 
-		// Step 1: Query for import field hash values and login codes
+			adds = adds[:0]
+			updates = updates[:0]
 
-		var hashCodeValues []participantΠImportHashLoginCode
-		keys, err := store.dsClient.GetAll(ctx,
-			datastore.NewQuery(participantKind).Ancestor(conferenceEntityGroupKey).Project(model.Participant_ImportHash, model.Participant_LoginCode),
-			&hashCodeValues)
-		if err != nil {
-			return err
-		}
+			// Query for import field hash values and login codes
 
-		for i, k := range keys {
-			xhashes[k.Name] = hashCodeValues[i].ImportHash
-			codes[hashCodeValues[i].LoginCode] = true
-		}
-
-		// Step 3: For each participant either insert or update...
-
-		var mutations []*datastore.Mutation
-
-		for _, p := range participants {
-			id := participantID(p)
-			key := participantKey(id)
-			hash := p.HashImportFields()
-			xhash, ok := xhashes[id]
-
-			if !ok {
-				// Participant not in datastore, insert.
-				p.ImportHash = hash
-				p.LoginCode, err = allocateUniqueLoginCode(codes)
-				p.PrintForm = true
-				if err != nil {
-					return err
-				}
-				mutations = append(mutations, datastore.NewInsert(key, (*xParticipant)(p)))
-				adds = append(adds, p.LastName)
-				continue
-			}
-			delete(xhashes, id)
-			if hash == xhash {
-				continue
-			}
-			// Participant is in datastore, update.
-			var xp xParticipant
-			if err := tx.Get(key, &xp); err != nil {
+			xhashes = make(map[string]string)
+			codes := make(map[string]bool)
+			var hashCodeValues []participantΠImportHashLoginCode
+			keys, err := store.dsClient.GetAll(ctx,
+				datastore.NewQuery(participantKind).Ancestor(conferenceEntityGroupKey).Project(model.Participant_ImportHash, model.Participant_LoginCode),
+				&hashCodeValues)
+			if err != nil {
 				return err
 			}
-			xp.ImportHash = hash
-			xp.PrintForm = xp.PrintForm || !p.EqualPrintFields(xp.model())
-			p.CopyImportFieldsTo(xp.model())
-			mutations = append(mutations, datastore.NewUpdate(key, &xp))
-			updates = append(updates, p.LastName)
+
+			for i, k := range keys {
+				xhashes[k.Name] = hashCodeValues[i].ImportHash
+				codes[hashCodeValues[i].LoginCode] = true
+			}
+
+			// For each participanti, insert or update as needed...
+
+			var mutations []*datastore.Mutation
+
+			for offset = 0; offset < len(participants) && len(mutations) < maxMutationsPerCall; offset++ {
+				p := participants[offset]
+				id := participantID(p)
+				hash := hashes[id]
+				xhash := xhashes[id]
+				if hash == xhash {
+					// No change to participant, continue to next.
+					continue
+				}
+
+				key := participantKey(id)
+				if xhash == "" {
+					// Participant not in datastore, insert.
+					p.ImportHash = hash
+					p.PrintForm = true
+					p.LoginCode, err = allocateUniqueLoginCode(codes)
+					if err != nil {
+						return err
+					}
+					mutations = append(mutations, datastore.NewInsert(key, (*xParticipant)(p)))
+					adds = append(adds, p.LastName)
+					continue
+				} else {
+					// Participant is in datastore, update.
+					var xp xParticipant
+					if err := tx.Get(key, &xp); err != nil {
+						return err
+					}
+					xp.ImportHash = hash
+					xp.PrintForm = xp.PrintForm || !p.EqualPrintFields(xp.model())
+					p.CopyImportFieldsTo(xp.model())
+					mutations = append(mutations, datastore.NewUpdate(key, &xp))
+					updates = append(updates, p.LastName)
+				}
+			}
+
+			_, err = tx.Mutate(mutations...)
+			return err
+		})
+
+		if err != nil {
+			return "", err
 		}
 
-		// Step 4: Delete participants missing from the imported data.
+		participants = participants[offset:]
+		allAdds = append(allAdds, adds...)
+		allUpdates = append(allUpdates, updates...)
+	}
 
+	// Find particpants to delete.
+
+	for id := range hashes {
+		delete(xhashes, id)
+	}
+
+	/*
 		const deleteLimit = 20
 		if len(xhashes) > deleteLimit {
-			return fmt.Errorf("possible bad import, attempt to delete %d participants, limit is %d", len(xhashes), deleteLimit)
+			return "", fmt.Errorf("possible bad import, attempt to delete %d participants, limit is %d", len(xhashes), deleteLimit)
 		}
+	*/
 
-		for id := range xhashes {
-			mutations = append(mutations, datastore.NewDelete(participantKey(id)))
+	for id := range xhashes {
+		if err := noEntityOK(store.dsClient.Delete(ctx, participantKey(id))); err != nil {
+			return "", err
 		}
+	}
 
-		if len(mutations) == 0 {
-			return nil
-		}
+	// Create summary of the change.
+	var parts []string
+	if len(allAdds) > 0 {
+		parts = append(parts, fmt.Sprintf("Added %s", joinComma(allAdds, 5)))
+	}
+	if len(allUpdates) > 0 {
+		parts = append(parts, fmt.Sprintf("Updated %s", joinComma(allUpdates, 5)))
+	}
+	if len(xhashes) > 0 {
+		parts = append(parts, fmt.Sprintf("Deleted %d", len(xhashes)))
+	}
+	summary := strings.Join(parts, "; ")
 
-		_, err = tx.Mutate(mutations...)
-		if err != nil {
-			return err
-		}
-
-		// Create summary of the change.
-		var parts []string
-		if len(adds) > 0 {
-			parts = append(parts, fmt.Sprintf("Added %s", joinComma(adds, 5)))
-		}
-		if len(updates) > 0 {
-			parts = append(parts, fmt.Sprintf("Updated %s", joinComma(updates, 5)))
-		}
-		if len(xhashes) > 0 {
-			parts = append(parts, fmt.Sprintf("Deleted %d", len(xhashes)))
-		}
-		summary = strings.Join(parts, "; ")
-
-		return nil
-	})
-
-	return summary, err
+	return summary, nil
 }
 
 func equalInstructorClasses(a []model.InstructorClass, b []model.InstructorClass) bool {

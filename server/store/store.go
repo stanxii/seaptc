@@ -128,6 +128,8 @@ func (store *Store) updateEntity(ctx context.Context, key *datastore.Key, update
 	return err
 }
 
+const maxMutationsPerCall = 250 // actual limit is 500, use 250 for safety
+
 func (store *Store) updateEntities(ctx context.Context, keys []*datastore.Key, update interface{}) (int, error) {
 	updatev, t, err := checkUpdateFunc(update)
 	if err != nil {
@@ -138,8 +140,8 @@ func (store *Store) updateEntities(ctx context.Context, keys []*datastore.Key, u
 
 	for len(keys) > 0 {
 		n := len(keys)
-		if n > 50 {
-			n = 50
+		if n > maxMutationsPerCall {
+			n = maxMutationsPerCall
 		}
 		var txMutationCount int
 		_, err := store.dsClient.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
