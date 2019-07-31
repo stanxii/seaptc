@@ -7,6 +7,7 @@ import (
 	htemp "html/template"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -94,6 +95,7 @@ func newTemplateManager(assetDir string) *templates.Manager {
 			"args": func(values ...interface{}) []interface{} {
 				return values
 			},
+			// add adds integers.
 			"add": func(values ...int) int {
 				result := 0
 				for _, v := range values {
@@ -101,6 +103,7 @@ func newTemplateManager(assetDir string) *templates.Manager {
 				}
 				return result
 			},
+			// truncate truncates s to n runes.
 			"truncate": func(s string, n int) string {
 				i := 0
 				for j := range s {
@@ -111,6 +114,7 @@ func newTemplateManager(assetDir string) *templates.Manager {
 				}
 				return s
 			},
+			// staticFile returns URL of static file w/ cache busting hash.
 			"staticFile": func(s string) (string, error) {
 				if u, ok := fileHashes.Load(s); ok {
 					return u.(string), nil
@@ -127,11 +131,21 @@ func newTemplateManager(assetDir string) *templates.Manager {
 				fileHashes.Store(s, u)
 				return u, nil
 			},
+			// isInvalid returns Bootstrap CSS class for invalid form control if k key is present in m.
 			"isInvalid": func(m map[string]string, k string) string {
 				if _, invalid := m[k]; invalid {
 					return " is-invalid"
 				}
 				return ""
+			},
+			// rget gets a value from v. An error is returned if v does not
+			// have the key k. Use this function to detect typos in keys.
+			"rget": func(v url.Values, k string) (string, error) {
+				vs := v[k]
+				if len(vs) == 0 {
+					return "", fmt.Errorf("key %q is missing", k)
+				}
+				return vs[0], nil
 			},
 		},
 		TextFuncs: map[string]interface{}{
@@ -147,4 +161,11 @@ func newTemplateManager(assetDir string) *templates.Manager {
 			},
 		},
 	}
+}
+
+func blankOrYes(v bool) string {
+	if v {
+		return "yes"
+	}
+	return ""
 }

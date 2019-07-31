@@ -31,7 +31,7 @@
 
   <div class="form-group">
     <label>Lunches</label>
-    <textarea class="form-control{{isInvalid .Invalid "lunches"}}" name="lunches" rows="12">{{.Form.Get "lunches"}}</textarea>
+    <textarea class="form-control{{isInvalid .Invalid "lunches"}}" name="lunches" rows="12">{{rget .Form "lunches"}}</textarea>
     <div class="invalid-feedback">{{index .Invalid "lunches"}}</div>
   </div>
 

@@ -314,16 +314,18 @@ func (svc *participantService) Serve_eval(rc *requestContext) error {
 			return err
 		}
 
-		if isInstructor {
-			data.Form.Set("isInstructor", "yes")
-		}
+		data.Form.Set("isInstructor", blankOrYes(isInstructor))
 
-		if sessionEvaluation != nil && sessionEvaluation.ClassNumber == data.SessionClass.Number {
-			setSessionEvaluationForm(data.Form, sessionEvaluation, "")
-			data.Form.Set("hash", sessionEvaluation.HashEditFields())
+		if sessionEvaluation == nil || sessionEvaluation.ClassNumber != data.SessionClass.Number {
+			sessionEvaluation = &model.SessionEvaluation{}
 		}
+		setSessionEvaluationForm(data.Form, sessionEvaluation, "")
+		data.Form.Set("hash", sessionEvaluation.HashEditFields())
 
-		if conferenceEvaluation != nil {
+		if data.EvaluateConference {
+			if conferenceEvaluation == nil {
+				conferenceEvaluation = &model.ConferenceEvaluation{}
+			}
 			setConferenceEvaluationForm(data.Form, conferenceEvaluation)
 			data.Form.Set("chash", conferenceEvaluation.HashEditFields())
 		}

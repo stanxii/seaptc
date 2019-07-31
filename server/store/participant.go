@@ -62,45 +62,17 @@ type participantΠImportHashLoginCode struct {
 	LoginCode  string `datastore:"loginCode"`
 }
 
-// xParticipant overrides datastore load and save on a model.Participant
-type xParticipant model.Participant
-
-var deletedParticipantFields = map[string]bool{"needsPrint": true, "printSchedule": true}
-
-func (p *xParticipant) Load(ps []datastore.Property) error {
-	err := datastore.LoadStruct(p.model(), filterProperties(ps, deletedParticipantFields))
-	if err != nil {
-		return err
-	}
-	p.model().Init()
-	return nil
-}
-
-func (p *xParticipant) LoadKey(k *datastore.Key) error {
-	p.ID = k.Name
-	return nil
-}
-
-func (p *xParticipant) Save() ([]datastore.Property, error) {
-	ps, err := datastore.SaveStruct(p.model())
-	return ps, err
-}
-
-func (p *xParticipant) model() *model.Participant {
-	return (*model.Participant)(p)
-}
-
 func (store *Store) GetParticipant(ctx context.Context, id string) (*model.Participant, error) {
-	var xp xParticipant
-	err := store.dsClient.Get(ctx, participantKey(id), &xp)
-	return xp.model(), err
+	var p model.Participant
+	err := store.dsClient.Get(ctx, participantKey(id), &p)
+	return &p, err
 }
 
 func (store *Store) GetParticipantForLoginCode(ctx context.Context, loginCode string) (*model.Participant, error) {
 	if loginCode == "" {
 		return nil, ErrNotFound
 	}
-	var participants []*xParticipant
+	var participants []*model.Participant
 	_, err := store.dsClient.GetAll(ctx, datastore.NewQuery(participantKind).
 		Ancestor(conferenceEntityGroupKey).
 		Filter(model.Participant_LoginCode+"=", loginCode), &participants)
@@ -110,7 +82,7 @@ func (store *Store) GetParticipantForLoginCode(ctx context.Context, loginCode st
 	if len(participants) != 1 {
 		return nil, ErrNotFound
 	}
-	return participants[0].model(), nil
+	return participants[0], nil
 }
 
 func (store *Store) GetParticipantsByID(ctx context.Context, ids []string) ([]*model.Participant, error) {
@@ -118,19 +90,19 @@ func (store *Store) GetParticipantsByID(ctx context.Context, ids []string) ([]*m
 	for i, id := range ids {
 		keys[i] = participantKey(id)
 	}
-	xparticipants := make([]*xParticipant, len(ids))
-	err := noEntityOK(store.dsClient.GetMulti(ctx, keys, xparticipants))
+	participants := make([]*model.Participant, len(ids))
+	err := noEntityOK(store.dsClient.GetMulti(ctx, keys, participants))
 	if err != nil {
 		return nil, err
 	}
-	var participants []*model.Participant
-	for _, xp := range xparticipants {
-		if xp == nil {
-			continue
+	j := 0
+	for _, p := range participants {
+		if p != nil {
+			participants[j] = p
+			j++
 		}
-		participants = append(participants, xp.model())
 	}
-	return participants, err
+	return participants[:j], nil
 }
 
 func (store *Store) getParticipantClasses(ctx context.Context) ([]*datastore.Key, []participantΠClass, error) {
@@ -181,17 +153,17 @@ func (store *Store) GetAllParticipants(ctx context.Context) ([]*model.Participan
 	// Use three project queries to get core participant fields in three read operations.
 
 	var (
-		g             errgroup.Group
-		xparticipants []*xParticipant
-		keys          []*datastore.Key
-		classes       []participantΠClass
-		ikeys         []*datastore.Key
-		iclasses      []participantΠInstructorClass
+		g            errgroup.Group
+		participants []*model.Participant
+		keys         []*datastore.Key
+		classes      []participantΠClass
+		ikeys        []*datastore.Key
+		iclasses     []participantΠInstructorClass
 	)
 
 	g.Go(func() error {
 		var err error
-		_, err = store.dsClient.GetAll(ctx, allParticipantsQuery, &xparticipants)
+		_, err = store.dsClient.GetAll(ctx, allParticipantsQuery, &participants)
 		return err
 	})
 
@@ -223,32 +195,20 @@ func (store *Store) GetAllParticipants(ctx context.Context) ([]*model.Participan
 		icmap[id] = append(icmap[id], iclasses[i].InstructorClass)
 	}
 
-	participants := make([]*model.Participant, len(xparticipants))
-	for i, xp := range xparticipants {
-		p := xp.model()
-
+	for _, p := range participants {
 		p.Classes = cmap[p.ID]
 		sort.Ints(p.Classes)
 
 		p.InstructorClasses = icmap[p.ID]
 		model.SortInstructorClasses(p.InstructorClasses)
-
-		participants[i] = p
 	}
 	return participants, nil
 }
 
 func (store *Store) GetAllParticipantsFull(ctx context.Context) ([]*model.Participant, error) {
-	var xparticipants []*xParticipant
-	_, err := store.dsClient.GetAll(ctx, datastore.NewQuery(participantKind).Ancestor(conferenceEntityGroupKey), &xparticipants)
-	if err != nil {
-		return nil, err
-	}
-	participants := make([]*model.Participant, len(xparticipants))
-	for i, xp := range xparticipants {
-		participants[i] = xp.model()
-	}
-	return participants, nil
+	var participants []*model.Participant
+	_, err := store.dsClient.GetAll(ctx, datastore.NewQuery(participantKind).Ancestor(conferenceEntityGroupKey), &participants)
+	return participants, err
 }
 
 func (store *Store) GetClassParticipants(ctx context.Context, classNumber int) ([]*model.Participant, error) {
@@ -351,18 +311,18 @@ func (store *Store) ImportParticipants(ctx context.Context, participants []*mode
 					if err != nil {
 						return err
 					}
-					mutations = append(mutations, datastore.NewInsert(key, (*xParticipant)(p)))
+					mutations = append(mutations, datastore.NewInsert(key, p))
 					adds = append(adds, p.LastName)
 					continue
 				} else {
 					// Participant is in datastore, update.
-					var xp xParticipant
+					var xp model.Participant
 					if err := tx.Get(key, &xp); err != nil {
 						return err
 					}
 					xp.ImportHash = hash
-					xp.PrintForm = xp.PrintForm || !p.EqualPrintFields(xp.model())
-					p.CopyImportFieldsTo(xp.model())
+					xp.PrintForm = xp.PrintForm || !p.EqualPrintFields(&xp)
+					p.CopyImportFieldsTo(&xp)
 					mutations = append(mutations, datastore.NewUpdate(key, &xp))
 					updates = append(updates, p.LastName)
 				}
@@ -431,7 +391,7 @@ func equalInstructorClasses(a []model.InstructorClass, b []model.InstructorClass
 func (store *Store) SetInstructorClasses(ctx context.Context, participantID string, classes []model.InstructorClass) error {
 	model.SortInstructorClasses(classes)
 	key := participantKey(participantID)
-	return store.updateEntity(ctx, key, func(xp *xParticipant) error {
+	return store.updateEntity(ctx, key, func(xp *model.Participant) error {
 		xp.PrintForm = xp.PrintForm || !equalInstructorClasses(classes, xp.InstructorClasses)
 		xp.InstructorClasses = classes
 		return nil
@@ -440,7 +400,7 @@ func (store *Store) SetInstructorClasses(ctx context.Context, participantID stri
 
 func (store *Store) SetNotesNoShow(ctx context.Context, participantID, notes string, noShow bool) error {
 	key := participantKey(participantID)
-	return store.updateEntity(ctx, key, func(xp *xParticipant) error {
+	return store.updateEntity(ctx, key, func(xp *model.Participant) error {
 		xp.Notes = notes
 		xp.NoShow = noShow
 		return nil
@@ -452,7 +412,7 @@ func (store *Store) SetParticipantsPrintForm(ctx context.Context, participantIDs
 	for i, id := range participantIDs {
 		keys[i] = participantKey(id)
 	}
-	return store.updateEntities(ctx, keys, func(xp *xParticipant) error {
+	return store.updateEntities(ctx, keys, func(xp *model.Participant) error {
 		if xp.PrintForm == printForm {
 			return errNoUpdate
 		}
@@ -467,7 +427,7 @@ func (store *Store) UpdateParticipants(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	_, err = store.updateEntities(ctx, keys, func(*xParticipant) error { return nil })
+	_, err = store.updateEntities(ctx, keys, func(*model.Participant) error { return nil })
 	return err
 }
 
@@ -476,6 +436,6 @@ func (store *Store) UpdateParticipants(ctx context.Context) error {
 // participant.
 func (store *Store) DebugSetParticipant(ctx context.Context, p *model.Participant) error {
 	key := participantKey(p.ID)
-	_, err := store.dsClient.Put(ctx, key, (*xParticipant)(p))
+	_, err := store.dsClient.Put(ctx, key, p)
 	return err
 }

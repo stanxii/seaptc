@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"cloud.google.com/go/datastore"
 )
 
 //go:generate go run gogen.go -input class.go -output gen_class.go Class
@@ -33,8 +35,8 @@ type Class struct {
 	ImportHash string `datastore:"importHash"`
 }
 
-// Init initializes derived fields.
-func (c *Class) Init() {
+// init initializes derived fields.
+func (c *Class) init() {
 }
 
 // Start returns zero based index of the starting session.
@@ -128,4 +130,25 @@ func SortClasses(classes []*Class, key string) {
 	default:
 		sort.Slice(classes, reverse(func(i, j int) bool { return classes[i].Number < classes[j].Number }))
 	}
+}
+
+var deletedClassFields = map[string]bool{}
+
+func (c *Class) Load(ps []datastore.Property) error {
+	err := datastore.LoadStruct(c, filterProperties(ps, deletedClassFields))
+	if err != nil {
+		return err
+	}
+	c.init()
+	return nil
+}
+
+func (c *Class) LoadKey(k *datastore.Key) error {
+	c.Number = int(k.ID)
+	return nil
+}
+
+func (c *Class) Save() ([]datastore.Property, error) {
+	ps, err := datastore.SaveStruct(c)
+	return ps, err
 }

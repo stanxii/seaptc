@@ -21,45 +21,17 @@ type classΠImportHash struct {
 	ImportHash string `datastore:"importHash"`
 }
 
-// xClass overrides datastore load and save on an model.Class.
-type xClass model.Class
-
-var deletedClassFields = map[string]bool{}
-
-func (c *xClass) Load(ps []datastore.Property) error {
-	err := datastore.LoadStruct(c.model(), filterProperties(ps, deletedClassFields))
-	if err != nil {
-		return err
-	}
-	c.model().Init()
-	return nil
-}
-
-func (c *xClass) LoadKey(k *datastore.Key) error {
-	c.Number = int(k.ID)
-	return nil
-}
-
-func (c *xClass) Save() ([]datastore.Property, error) {
-	ps, err := datastore.SaveStruct(c.model())
-	return ps, err
-}
-
-func (c *xClass) model() *model.Class {
-	return (*model.Class)(c)
-}
-
 func (store *Store) GetClass(ctx context.Context, number int) (*model.Class, error) {
 	if !model.IsValidClassNumber(number) {
 		return nil, ErrNotFound
 	}
-	var c xClass
+	var c model.Class
 	err := store.dsClient.Get(ctx, classKey(number), &c)
-	return c.model(), err
+	return &c, err
 }
 
 func (store *Store) GetClassForEvaluationCode(ctx context.Context, evalCode string) (*model.Class, error) {
-	var xclasses []*xClass
+	var xclasses []*model.Class
 	_, err := store.dsClient.GetAll(ctx, datastore.NewQuery(classKind).
 		Ancestor(conferenceEntityGroupKey).
 		Filter(model.Class_EvaluationCodes+"=", evalCode), &xclasses)
@@ -69,7 +41,7 @@ func (store *Store) GetClassForEvaluationCode(ctx context.Context, evalCode stri
 	if len(xclasses) < 1 {
 		return nil, ErrNotFound
 	}
-	return xclasses[0].model(), nil
+	return xclasses[0], nil
 }
 
 var allClassesQuery = datastore.NewQuery(classKind).Ancestor(conferenceEntityGroupKey).Project(
@@ -81,29 +53,15 @@ var allClassesQuery = datastore.NewQuery(classKind).Ancestor(conferenceEntityGro
 	model.Class_EvaluationCodes)
 
 func (store *Store) GetAllClasses(ctx context.Context) ([]*model.Class, error) {
-	var xclasses []*xClass
-	_, err := store.dsClient.GetAll(ctx, allClassesQuery, &xclasses)
-	if err != nil {
-		return nil, err
-	}
-	classes := make([]*model.Class, len(xclasses))
-	for i, xc := range xclasses {
-		classes[i] = xc.model()
-	}
-	return classes, nil
+	var classes []*model.Class
+	_, err := store.dsClient.GetAll(ctx, allClassesQuery, &classes)
+	return classes, err
 }
 
 func (store *Store) GetAllClassesFull(ctx context.Context) ([]*model.Class, error) {
-	var xclasses []*xClass
-	_, err := store.dsClient.GetAll(ctx, datastore.NewQuery(classKind).Ancestor(conferenceEntityGroupKey), &xclasses)
-	if err != nil {
-		return nil, err
-	}
-	classes := make([]*model.Class, len(xclasses))
-	for i, xc := range xclasses {
-		classes[i] = xc.model()
-	}
-	return classes, nil
+	var classes []*model.Class
+	_, err := store.dsClient.GetAll(ctx, datastore.NewQuery(classKind).Ancestor(conferenceEntityGroupKey), &classes)
+	return classes, err
 }
 
 func (store *Store) ImportClasses(ctx context.Context, classes []*model.Class) (int, error) {
@@ -148,7 +106,7 @@ func (store *Store) ImportClasses(ctx context.Context, classes []*model.Class) (
 			if !ok {
 				// New class.
 				c.ImportHash = hash
-				mutations = append(mutations, datastore.NewInsert(classKey(c.Number), (*xClass)(c)))
+				mutations = append(mutations, datastore.NewInsert(classKey(c.Number), c))
 				continue
 			}
 			delete(xhashes, c.Number)
@@ -156,12 +114,12 @@ func (store *Store) ImportClasses(ctx context.Context, classes []*model.Class) (
 				continue
 			}
 			// Modified class.
-			var xc xClass
+			var xc model.Class
 			if err := tx.Get(key, &xc); err != nil {
 				return err
 			}
 			xc.ImportHash = hash
-			c.CopyImportFieldsTo(xc.model())
+			c.CopyImportFieldsTo(&xc)
 			mutations = append(mutations, datastore.NewUpdate(key, &xc))
 		}
 
@@ -190,6 +148,6 @@ func (store *Store) UpdateClasses(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	_, err = store.updateEntities(ctx, keys, func(xc *xClass) error { return nil })
+	_, err = store.updateEntities(ctx, keys, func(xc *model.Class) error { return nil })
 	return err
 }

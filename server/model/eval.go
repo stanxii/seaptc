@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"cloud.google.com/go/datastore"
+)
 
 // MaxEvalRating is the maximum value for an evaluation rating. The rating
 // values are:
@@ -41,4 +45,35 @@ type ConferenceEvaluation struct {
 	Comments                string    `json:"comments" datastore:"comments,noindex" fields:"Edit"`
 	Source                  string    `json:"source" datastore:"source,noindex"`
 	Updated                 time.Time `json:"updated" datastore:"updated,noindex"`
+}
+
+func (e *SessionEvaluation) Load(ps []datastore.Property) error {
+	return datastore.LoadStruct(e, ps)
+}
+
+func (e *SessionEvaluation) LoadKey(k *datastore.Key) error {
+	e.Session = int(k.ID - 1)
+	if k := k.Parent; k != nil {
+		e.ParticipantID = k.Name
+	}
+	return nil
+}
+
+func (e *SessionEvaluation) Save() ([]datastore.Property, error) {
+	return datastore.SaveStruct(e)
+}
+
+func (e *ConferenceEvaluation) Load(ps []datastore.Property) error {
+	return datastore.LoadStruct(e, ps)
+}
+
+func (e *ConferenceEvaluation) LoadKey(k *datastore.Key) error {
+	if k := k.Parent; k != nil {
+		e.ParticipantID = k.Name
+	}
+	return nil
+}
+
+func (e *ConferenceEvaluation) Save() ([]datastore.Property, error) {
+	return datastore.SaveStruct(e)
 }

@@ -70,18 +70,6 @@ func noEntityOK(err error) error {
 	return err
 }
 
-func filterProperties(ps []datastore.Property, deleted map[string]bool) []datastore.Property {
-	i := 0
-	for _, p := range ps {
-		if deleted[p.Name] {
-			continue
-		}
-		ps[i] = p
-		i++
-	}
-	return ps[:i]
-}
-
 var conferenceEntityGroupKey = datastore.IDKey("conference", 1, nil)
 
 var (

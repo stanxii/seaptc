@@ -7,11 +7,11 @@
 <form method="POST" class="mb-3" autocomplete="off">
   {{$.XSRFToken $.Request.URL.Path}}
   {{range $session, $classes := .Data.SessionClasses}}
-    {{$classNumber := $form.Get (printf "class%d" $session)}}
-    <input type="hidden" name="hash{{$session}}" value="{{$form.Get (printf "hash%d" $session)}}">
-    <input type="hidden" name="lastUpdate{{$session}}" value="{{$form.Get (printf "lastUpdate%d" $session)}}">
+    {{$classNumber := rget $form (printf "class%d" $session)}}
+    <input type="hidden" name="hash{{$session}}" value="{{rget $form (printf "hash%d" $session)}}">
+    <input type="hidden" name="lastUpdate{{$session}}" value="{{rget $form (printf "lastUpdate%d" $session)}}">
     <div class="mb-3">
-      <h5>Session {{add $session 1}}{{with $form.Get (printf "lastUpdate%d" $session)}} <small class="text-muted float-right">{{.}}</small>{{end}}</h5>
+      <h5>Session {{add $session 1}}{{with rget $form (printf "lastUpdate%d" $session)}} <small class="text-muted float-right">{{.}}</small>{{end}}</h5>
       <div class="form-row mb-2">
         <select class="form-control form-control-sm {{isInvalid $.Data.Invalid (printf "class%d" $session)}}" name="class{{$session}}">
           <option value="0">No Class</option>
@@ -28,15 +28,15 @@
           {{template "classRating" args $.Data "overall" "Overall" $session}}
         </div>
         <div class="col-9">
-          <textarea class="form-control form-control-sm" name="comments{{$session}}" rows="6">{{$form.Get (printf "comments%d" $session)}}</textarea>
+          <textarea class="form-control form-control-sm" name="comments{{$session}}" rows="6">{{rget $form (printf "comments%d" $session)}}</textarea>
         </div>
       </div>
     </div>
   {{end}}
   <div class="mb-3">
-    <h5>Conference{{with $form.Get "lastUpdate"}} <small class="text-muted float-right">{{.}}</small>{{end}}</h5>
-    <input type="hidden" name="hash" value="{{$form.Get "hash"}}">
-    <input type="hidden" name="lastUpdate" value="{{$form.Get "lastUpdate"}}">
+    <h5>Conference{{with rget $form "lastUpdate"}} <small class="text-muted float-right">{{.}}</small>{{end}}</h5>
+    <input type="hidden" name="hash" value="{{rget $form "hash"}}">
+    <input type="hidden" name="lastUpdate" value="{{rget $form "lastUpdate"}}">
     {{template "confRating" args $.Data "experience" "Overall experience"}}
     {{template "confRating" args $.Data "promotion" "Promotion"}}
     {{template "confRating" args $.Data "registration" "Online registration"}}
@@ -48,23 +48,23 @@
     {{template "confRating" args $.Data "signageWayfinding" "Signage and wayfinding"}}
     <div class="form-group">
       <labeL>Learn Topics</label>
-      <textarea class="form-control form-control-sm" name="learnTopics" rows="2">{{$form.Get "learnTopics"}}</textarea>
+      <textarea class="form-control form-control-sm" name="learnTopics" rows="2">{{rget $form "learnTopics"}}</textarea>
     </div>
     <div class="form-group">
       <label>Teach Topics</label>
-      <textarea class="form-control form-control-sm" name="teachTopics" rows="2">{{$form.Get "teachTopics"}}</textarea>
+      <textarea class="form-control form-control-sm" name="teachTopics" rows="2">{{rget $form "teachTopics"}}</textarea>
     </div>
     <div class="form-group">
       <label>Comments</label>
-      <textarea class="form-control form-control-sm" name="comments" rows="6">{{$form.Get "comments"}}</textarea>
+      <textarea class="form-control form-control-sm" name="comments" rows="6">{{rget $form "comments"}}</textarea>
     </div>
   </div>
   <div class="form-group mb-3">
     <label>Staff Notes</label>
-    <textarea class="form-control form-control-sm" name="notes" rows="6">{{$form.Get "notes"}}</textarea>
+    <textarea class="form-control form-control-sm" name="notes" rows="6">{{rget $form "notes"}}</textarea>
   </div>
   <div class="form-check mb-3">
-    <input type="checkbox" class="col form-check-input" name="noShow" {{if $form.Get "noShow"}}checked{{end}}>
+    <input type="checkbox" class="col form-check-input" name="noShow" {{if rget $form "noShow"}}checked{{end}}>
     <label class="col">No Show</label>
   </div>
   <button type="submit" class="btn btn-primary">Update</button>

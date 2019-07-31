@@ -796,6 +796,8 @@ func (svc *dashboardService) Serve_dashboard_forms(rc *requestContext) error {
 		return err
 	}
 
+	auto := options.auto
+
 	options.sort(participants)
 
 	if options.filter {
@@ -804,6 +806,8 @@ func (svc *dashboardService) Serve_dashboard_forms(rc *requestContext) error {
 
 	if options.limit > 0 && len(participants) > options.limit {
 		participants = participants[:options.limit]
+		// Swtich to manual mode to avoid getting stuck in print-refresh loop.
+		auto = 0
 	}
 
 	ids := make([]string, len(participants))
@@ -811,7 +815,7 @@ func (svc *dashboardService) Serve_dashboard_forms(rc *requestContext) error {
 		ids[i] = participants[i].ID
 	}
 
-	return svc.renderForms(rc, options.auto, !options.filter, ids)
+	return svc.renderForms(rc, auto, !options.filter, ids)
 }
 
 func (svc *dashboardService) Serve_dashboard_forms_(rc *requestContext) error {
@@ -1334,9 +1338,7 @@ func (svc *dashboardService) Serve_dashboard_evaluations_(rc *requestContext) er
 		}
 
 		data.Form.Set("notes", data.Participant.Notes)
-		if data.Participant.NoShow {
-			data.Form.Set("noShow", "on")
-		}
+		data.Form.Set("noShow", blankOrYes(data.Participant.NoShow))
 
 		lastUpdate := func(source string, t time.Time) string {
 			if source == "" || t.IsZero() {

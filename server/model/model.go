@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+
+	"cloud.google.com/go/datastore"
 )
 
 func equalIntSlice(a, b []int) bool {
@@ -88,4 +90,16 @@ func SortKeyReverse(key string) (string, func(func(int, int) bool) func(int, int
 	default:
 		return key, noReverse
 	}
+}
+
+func filterProperties(ps []datastore.Property, deleted map[string]bool) []datastore.Property {
+	i := 0
+	for _, p := range ps {
+		if deleted[p.Name] {
+			continue
+		}
+		ps[i] = p
+		i++
+	}
+	return ps[:i]
 }

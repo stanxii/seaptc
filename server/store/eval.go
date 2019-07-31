@@ -20,48 +20,6 @@ type sessionEvaluationΠClass struct {
 	ClassNumber int `datastore:"classNumber"`
 }
 
-type xSessionEvaluation model.SessionEvaluation
-type xConferenceEvaluation model.ConferenceEvaluation
-
-func (e *xSessionEvaluation) model() *model.SessionEvaluation {
-	return (*model.SessionEvaluation)(e)
-}
-
-func (e *xConferenceEvaluation) model() *model.ConferenceEvaluation {
-	return (*model.ConferenceEvaluation)(e)
-}
-
-func (e *xSessionEvaluation) Load(ps []datastore.Property) error {
-	return datastore.LoadStruct(e.model(), ps)
-}
-
-func (e *xSessionEvaluation) LoadKey(k *datastore.Key) error {
-	e.Session = int(k.ID - 1)
-	if k := k.Parent; k != nil && k.Kind == participantKind {
-		e.ParticipantID = k.Name
-	}
-	return nil
-}
-
-func (e *xSessionEvaluation) Save() ([]datastore.Property, error) {
-	return datastore.SaveStruct(e.model())
-}
-
-func (e *xConferenceEvaluation) Load(ps []datastore.Property) error {
-	return datastore.LoadStruct(e.model(), ps)
-}
-
-func (e *xConferenceEvaluation) LoadKey(k *datastore.Key) error {
-	if k := k.Parent; k != nil && k.Kind == participantKind {
-		e.ParticipantID = k.Name
-	}
-	return nil
-}
-
-func (e *xConferenceEvaluation) Save() ([]datastore.Property, error) {
-	return datastore.SaveStruct(e.model())
-}
-
 func sessionEvaluationKey(participantID string, session int) *datastore.Key {
 	return datastore.IDKey(sessionEvaluationKind, int64(session)+1, participantKey(participantID))
 }
@@ -76,39 +34,30 @@ func (store *Store) GetSessionEvaluation(ctx context.Context, participantID stri
 	if participantID == "" {
 		return nil, errInvalidParticipantID
 	}
-	var xeval xSessionEvaluation
-	err := store.dsClient.Get(ctx, sessionEvaluationKey(participantID, session), &xeval)
-	return xeval.model(), err
+	var e model.SessionEvaluation
+	err := store.dsClient.Get(ctx, sessionEvaluationKey(participantID, session), &e)
+	return &e, err
 }
 
 func (store *Store) GetSessionEvaluations(ctx context.Context, participantID string) ([]*model.SessionEvaluation, error) {
 	if participantID == "" {
 		return nil, errInvalidParticipantID
 	}
-	var xevals []*xSessionEvaluation
+	var evals []*model.SessionEvaluation
 	query := datastore.NewQuery(sessionEvaluationKind).Ancestor(participantKey(participantID))
-	_, err := store.dsClient.GetAll(ctx, query, &xevals)
-	if err != nil {
-		return nil, err
-	}
-	evals := make([]*model.SessionEvaluation, len(xevals))
-	for i := range xevals {
-		evals[i] = xevals[i].model()
-	}
-	return evals, nil
+	_, err := store.dsClient.GetAll(ctx, query, &evals)
+	return evals, err
 }
 
-func (store *Store) SetSessionEvaluations(ctx context.Context, sessionEvaluations []*model.SessionEvaluation) error {
-	keys := make([]*datastore.Key, len(sessionEvaluations))
-	xevals := make([]*xSessionEvaluation, len(sessionEvaluations))
-	for i, eval := range sessionEvaluations {
-		if eval.ParticipantID == "" {
+func (store *Store) SetSessionEvaluations(ctx context.Context, evals []*model.SessionEvaluation) error {
+	keys := make([]*datastore.Key, len(evals))
+	for i, e := range evals {
+		if e.ParticipantID == "" {
 			return errInvalidParticipantID
 		}
-		keys[i] = sessionEvaluationKey(eval.ParticipantID, eval.Session)
-		xevals[i] = (*xSessionEvaluation)(eval)
+		keys[i] = sessionEvaluationKey(e.ParticipantID, e.Session)
 	}
-	_, err := store.dsClient.PutMulti(ctx, keys, xevals)
+	_, err := store.dsClient.PutMulti(ctx, keys, evals)
 	return err
 }
 
@@ -116,52 +65,54 @@ func (store *Store) GetConferenceEvaluation(ctx context.Context, participantID s
 	if participantID == "" {
 		return nil, errInvalidParticipantID
 	}
-	var xeval xConferenceEvaluation
-	err := store.dsClient.Get(ctx, conferenceEvaluationKey(participantID), &xeval)
-	return xeval.model(), err
+	var e model.ConferenceEvaluation
+	err := store.dsClient.Get(ctx, conferenceEvaluationKey(participantID), &e)
+	return &e, err
 }
 
-func (store *Store) SetConferenceEvaluation(ctx context.Context, conferenceEvaluation *model.ConferenceEvaluation) error {
-	if conferenceEvaluation.ParticipantID == "" {
+func (store *Store) SetConferenceEvaluation(ctx context.Context, e *model.ConferenceEvaluation) error {
+	if e.ParticipantID == "" {
 		return errInvalidParticipantID
 	}
-	key := conferenceEvaluationKey(conferenceEvaluation.ParticipantID)
-	_, err := store.dsClient.Put(ctx, key, (*xConferenceEvaluation)(conferenceEvaluation))
+	key := conferenceEvaluationKey(e.ParticipantID)
+	_, err := store.dsClient.Put(ctx, key, e)
 	return err
 }
 
 func (store *Store) GetAllConferenceEvaluations(ctx context.Context) ([]*model.ConferenceEvaluation, error) {
 	query := datastore.NewQuery(conferenceEvaluationKind).Ancestor(conferenceEntityGroupKey)
-	var evals []*xConferenceEvaluation
+	var evals []*model.ConferenceEvaluation
 	_, err := store.dsClient.GetAll(ctx, query, &evals)
 	if err != nil {
 		return nil, err
 	}
-	conferenceEvaluations := make([]*model.ConferenceEvaluation, 0, len(evals))
-	for _, eval := range evals {
-		if eval.ParticipantID == "" {
+	j := 0
+	for _, e := range evals {
+		if e.ParticipantID == "" {
 			continue
 		}
-		conferenceEvaluations = append(conferenceEvaluations, eval.model())
+		evals[j] = e
+		j++
 	}
-	return conferenceEvaluations, nil
+	return evals[:j], nil
 }
 
 func (store *Store) GetAllSessionEvaluations(ctx context.Context) ([]*model.SessionEvaluation, error) {
 	query := datastore.NewQuery(sessionEvaluationKind).Ancestor(conferenceEntityGroupKey)
-	var evals []*xSessionEvaluation
+	var evals []*model.SessionEvaluation
 	_, err := store.dsClient.GetAll(ctx, query, &evals)
 	if err != nil {
 		return nil, err
 	}
-	sessionEvaluations := make([]*model.SessionEvaluation, 0, len(evals))
-	for _, eval := range evals {
-		if eval.ParticipantID == "" {
+	j := 0
+	for _, e := range evals {
+		if e.ParticipantID == "" {
 			continue
 		}
-		sessionEvaluations = append(sessionEvaluations, eval.model())
+		evals[j] = e
+		j++
 	}
-	return sessionEvaluations, nil
+	return evals[:j], nil
 }
 
 type EvaluationStatus struct {

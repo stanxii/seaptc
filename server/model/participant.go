@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"cloud.google.com/go/datastore"
 )
 
 type InstructorClass struct {
@@ -111,8 +113,8 @@ func (p *Participant) Emails() []string {
 	return []string{p.RegisteredByEmail, p.Email}
 }
 
-// Init initializes derived fields.
-func (p *Participant) Init() {
+// init initializes derived fields.
+func (p *Participant) init() {
 	p.sortName = strings.ToLower(fmt.Sprintf("%s\n%s\n%s", p.LastName, p.FirstName, p.Suffix))
 	SortInstructorClasses(p.InstructorClasses)
 }
@@ -176,4 +178,25 @@ func SortInstructorClasses(classes []InstructorClass) {
 	sort.Slice(classes, func(i, j int) bool {
 		return classes[i].Session < classes[j].Session
 	})
+}
+
+var deletedParticipantFields = map[string]bool{"needsPrint": true, "printSchedule": true}
+
+func (p *Participant) Load(ps []datastore.Property) error {
+	err := datastore.LoadStruct(p, filterProperties(ps, deletedParticipantFields))
+	if err != nil {
+		return err
+	}
+	p.init()
+	return nil
+}
+
+func (p *Participant) LoadKey(k *datastore.Key) error {
+	p.ID = k.Name
+	return nil
+}
+
+func (p *Participant) Save() ([]datastore.Property, error) {
+	ps, err := datastore.SaveStruct(p)
+	return ps, err
 }

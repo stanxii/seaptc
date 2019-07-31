@@ -5,14 +5,14 @@
 
 <form method="POST" class="mb-3">
   {{$.XSRFToken $.Request.URL.Path}}
-  <input type="hidden" name="evaluationCode" value="{{.Form.Get "evaluationCode"}}">
-  <input type="hidden" name="isInstructor" value="{{.Form.Get "isInstructor"}}">
+  <input type="hidden" name="evaluationCode" value="{{rget .Form "evaluationCode"}}">
+  <input type="hidden" name="isInstructor" value="{{rget .Form "isInstructor"}}">
 
   {{if .EvaluateSession}}
     {{with .SessionClass}}
       <h5>{{.Number}}: {{.ShortTitle}}{{.IofN}}</h5>
     {{end}}
-    {{if .Form.Get "isInstructor"}}
+    {{if rget .Form "isInstructor"}}
       <p>Thank you for teaching this class.
       {{template "textarea" args . "comments" "Comments about the session"}}
     {{else}}
@@ -83,13 +83,13 @@
 {{define "text"}}{{$data := index . 0}}{{$name := index . 1}}{{$label := index . 2}}
   <div class="mb-4">
     <label for="{{$name}}">{{$label}}</label>
-    <input type="text" class="form-control" autocomplete="off" id="{{$name}}" name="{{$name}}" value="{{$data.Form.Get $name}}">
+    <input type="text" class="form-control" autocomplete="off" id="{{$name}}" name="{{$name}}" value="{{rget $data.Form $name}}">
   </div>
 {{end}}
 
 {{define "textarea"}}{{$data := index . 0}}{{$name := index . 1}}{{$label := index . 2}}
   <div class="mb-4">
     <label for="{{$name}}">{{$label}}</label>
-    <textarea class="form-control" autocomplete="off" id="{{$name}}" name="{{$name}}" rows="8">{{$data.Form.Get $name}}</textarea>
+    <textarea class="form-control" autocomplete="off" id="{{$name}}" name="{{$name}}" rows="8">{{rget $data.Form $name}}</textarea>
   </div>
 {{end}}

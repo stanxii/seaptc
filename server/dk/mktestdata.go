@@ -218,7 +218,7 @@ func stringPicker(choices string) func() string {
 }
 
 func unitNumber() string {
-	return strconv.Itoa(100 + rand.Intn(600))
+	return strconv.Itoa(100 + rand.Intn(20))
 }
 
 func registrationNumber() func() string {
