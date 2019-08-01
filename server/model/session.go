@@ -3,7 +3,6 @@ package model
 import (
 	"fmt"
 	"log"
-	"strings"
 	"sync"
 )
 
@@ -32,10 +31,10 @@ func (sc *SessionClass) part() int {
 }
 
 func (sc *SessionClass) EvaluationCode() string {
-	codes := strings.Split(sc.EvaluationCodes, ",")
+	codes := SplitComma(sc.EvaluationCodes)
 	i := sc.Session - sc.Start()
 	if 0 <= i && i < len(codes) {
-		return strings.TrimSpace(codes[i])
+		return codes[i]
 	}
 	return ""
 }
@@ -79,8 +78,7 @@ func (ci *ClassInfo) LookupEvaluationCode(evaluationCode string) *SessionClass {
 	ci.evalCode.once.Do(func() {
 		ci.evalCode.value = make(map[string]*SessionClass)
 		for _, c := range ci.classes {
-			for i, code := range strings.Split(c.EvaluationCodes, ",") {
-				code = strings.TrimSpace(code)
+			for i, code := range SplitComma(c.EvaluationCodes) {
 				ci.evalCode.value[code] = &SessionClass{Class: c, Session: c.Start() + i}
 			}
 		}

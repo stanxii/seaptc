@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -71,14 +72,15 @@ func setInt(pv *int, s string) error {
 	return nil
 }
 
-func setList(pv *[]string, s string) error {
+func setList(pv *string, s string) error {
 	var v []string
 	for _, e := range listDelimPattern.Split(s, -1) {
 		if e != "" {
 			v = append(v, e)
 		}
 	}
-	*pv = v
+	sort.Strings(v)
+	*pv = strings.Join(v, ", ")
 	return nil
 }
 
@@ -90,7 +92,8 @@ func setInstructors(c *class, s string) error {
 			v = append(v, strings.TrimSpace(e))
 		}
 	}
-	c.InstructorNames = v
+	sort.Strings(v)
+	c.InstructorNames = strings.Join(v, ", ")
 	return nil
 }
 

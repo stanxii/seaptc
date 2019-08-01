@@ -49,8 +49,8 @@ func (x *Class) EqualImportFields(y *Class) bool {
 		x.Capacity == y.Capacity &&
 		x.Description == y.Description &&
 		x.EvaluationCodes == y.EvaluationCodes &&
-		equalStringSlice(x.InstructorEmails, y.InstructorEmails) &&
-		equalStringSlice(x.InstructorNames, y.InstructorNames) &&
+		x.InstructorEmails == y.InstructorEmails &&
+		x.InstructorNames == y.InstructorNames &&
 		x.Length == y.Length &&
 		x.Location == y.Location &&
 		x.New == y.New &&

@@ -942,8 +942,8 @@ func (svc *dashboardService) Serve_dashboard_exportClasses(rc *requestContext) e
 			fmt.Sprintf("%d", c.Number),
 			fmt.Sprintf("%d", c.Length),
 			c.Title,
-			strings.Join(c.InstructorNames, ", "),
-			strings.Join(c.InstructorEmails, ", "),
+			c.InstructorNames,
+			c.InstructorEmails,
 		})
 	}
 	w.Flush()
@@ -1165,8 +1165,7 @@ func (svc *dashboardService) Serve_dashboard_evalCodes(rc *requestContext) error
 			}
 			accessTokens[class.AccessToken] = class.Number
 		}
-		for _, code := range strings.Split(class.EvaluationCodes, ",") {
-			code = strings.TrimSpace(code)
+		for _, code := range model.SplitComma(class.EvaluationCodes) {
 			num, ok := evaluationCodes[code]
 			if ok {
 				return &httperror.Error{
@@ -1198,7 +1197,7 @@ func (svc *dashboardService) Serve_dashboard_evalCodes(rc *requestContext) error
 				}
 			}
 		}
-		codes := strings.Split(class.EvaluationCodes, ",")
+		codes := model.SplitComma(class.EvaluationCodes)
 		if len(codes) > class.Length {
 			// Remove extra codes.
 			codes = codes[:class.Length]

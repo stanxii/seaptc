@@ -16,20 +16,22 @@ import (
 type Class struct {
 	Number int `json:"number" datastore:"_" fields:"Import"`
 
-	Length           int      `json:"length" datastore:"length" fields:"Import"`
-	Responsibility   string   `json:"responsibility"  datastore:"responsibility" fields:"Import"`
-	New              string   `json:"new" datastore:"new,noindex" fields:"Import"`
-	Title            string   `json:"title" datastore:"title" fields:"Import"`
-	TitleNote        string   `json:"titleNote" datastore:"titleNote,noindex" fields:"Import"`
-	Description      string   `json:"description" datastore:"description,noindex" fields:"Import"`
-	Programs         int      `json:"programs" datastore:"programs,noindex" fields:"Import"`
-	Capacity         int      `json:"capacity" datastore:"capacity" fields:"Import"`
-	Location         string   `json:"location" datastore:"location" fields:"Import"`
-	SpreadsheetRow   int      `json:"-" datastore:"spreadsheetRow,noindex" fields:"Import"`
-	InstructorNames  []string `json:"instructorNames" datastore:"instructorNames,noindex" fields:"Import"`
-	InstructorEmails []string `json:"instructorEmails" datastore:"instructorEmails,noindex" fields:"Import"`
-	EvaluationCodes  string   `json:"evaluationCodes" datastore:"evaluationCodes" fields:"Import"`
-	AccessToken      string   `json:"accessToken" datastore:"accessToken,noindex" fields:"Import"`
+	Length         int    `json:"length" datastore:"length" fields:"Import"`
+	Responsibility string `json:"responsibility"  datastore:"responsibility" fields:"Import"`
+	New            string `json:"new" datastore:"new,noindex" fields:"Import"`
+	Title          string `json:"title" datastore:"title" fields:"Import"`
+	TitleNote      string `json:"titleNote" datastore:"titleNote,noindex" fields:"Import"`
+	Description    string `json:"description" datastore:"description,noindex" fields:"Import"`
+	Programs       int    `json:"programs" datastore:"programs,noindex" fields:"Import"`
+	Capacity       int    `json:"capacity" datastore:"capacity" fields:"Import"`
+	Location       string `json:"location" datastore:"location" fields:"Import"`
+	SpreadsheetRow int    `json:"-" datastore:"spreadsheetRow,noindex" fields:"Import"`
+	AccessToken    string `json:"accessToken" datastore:"accessToken,noindex" fields:"Import"`
+
+	// The following fields are comma separated strings.
+	InstructorNames  string `json:"instructorNames" datastore:"instructorNames" fields:"Import"`
+	InstructorEmails string `json:"instructorEmails" datastore:"instructorEmails" fields:"Import"`
+	EvaluationCodes  string `json:"evaluationCodes" datastore:"evaluationCodes" fields:"Import"`
 
 	// Hash computed from planning spreadhseet fields.
 	ImportHash string `datastore:"importHash"`
@@ -85,6 +87,26 @@ func (c *Class) ShortTitle() string {
 		}
 	}
 	return c.Title
+}
+
+func SplitComma(s string) []string {
+	var result []string
+
+	for len(s) > 0 {
+		s = strings.TrimLeft(s, " ")
+		i := strings.IndexByte(s, ',')
+		t := s
+		if i < 0 {
+			i = len(s)
+		}
+		t = s[:i]
+		s = s[i+1:]
+		t = strings.TrimRight(t, " ")
+		if t != "" {
+			result = append(result, t)
+		}
+	}
+	return result
 }
 
 func IsValidClassNumber(number int) bool {

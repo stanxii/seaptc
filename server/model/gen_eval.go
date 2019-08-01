@@ -36,6 +36,7 @@ const (
 )
 
 func (x *SessionEvaluation) CopyEditFieldsTo(y *SessionEvaluation) {
+	y.ClassNumber = x.ClassNumber
 	y.Comments = x.Comments
 	y.KnowledgeRating = x.KnowledgeRating
 	y.OverallRating = x.OverallRating
@@ -44,7 +45,8 @@ func (x *SessionEvaluation) CopyEditFieldsTo(y *SessionEvaluation) {
 }
 
 func (x *SessionEvaluation) EqualEditFields(y *SessionEvaluation) bool {
-	return x.Comments == y.Comments &&
+	return x.ClassNumber == y.ClassNumber &&
+		x.Comments == y.Comments &&
 		x.KnowledgeRating == y.KnowledgeRating &&
 		x.OverallRating == y.OverallRating &&
 		x.PresentationRating == y.PresentationRating &&
@@ -53,7 +55,8 @@ func (x *SessionEvaluation) EqualEditFields(y *SessionEvaluation) bool {
 
 func (x *SessionEvaluation) HashEditFields() string {
 	h := md5.New()
-	hashValue(h, "84d3acd56f885b660d7afc79cf277afe")
+	hashValue(h, "5f0935b30e68e83a1b3747f71a063c11")
+	hashValue(h, x.ClassNumber)
 	hashValue(h, x.Comments)
 	hashValue(h, x.KnowledgeRating)
 	hashValue(h, x.OverallRating)

@@ -30,27 +30,15 @@ func (store *Store) GetClass(ctx context.Context, number int) (*model.Class, err
 	return &c, err
 }
 
-func (store *Store) GetClassForEvaluationCode(ctx context.Context, evalCode string) (*model.Class, error) {
-	var xclasses []*model.Class
-	_, err := store.dsClient.GetAll(ctx, datastore.NewQuery(classKind).
-		Ancestor(conferenceEntityGroupKey).
-		Filter(model.Class_EvaluationCodes+"=", evalCode), &xclasses)
-	if err != nil {
-		return nil, err
-	}
-	if len(xclasses) < 1 {
-		return nil, ErrNotFound
-	}
-	return xclasses[0], nil
-}
-
 var allClassesQuery = datastore.NewQuery(classKind).Ancestor(conferenceEntityGroupKey).Project(
 	model.Class_Length,
 	model.Class_Title,
 	model.Class_Capacity,
 	model.Class_Location,
 	model.Class_Responsibility,
-	model.Class_EvaluationCodes)
+	model.Class_EvaluationCodes,
+	model.Class_InstructorNames,
+	model.Class_InstructorEmails)
 
 func (store *Store) GetAllClasses(ctx context.Context) ([]*model.Class, error) {
 	var classes []*model.Class

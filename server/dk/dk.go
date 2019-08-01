@@ -18,7 +18,6 @@ import (
 var (
 	unitNumberPat      = regexp.MustCompile(`(\d+)`)
 	classNumberPattern = regexp.MustCompile(`^(\d\d\d):`)
-	commaSepPat        = regexp.MustCompile(`\s*,\s*`)
 )
 
 type participant struct {
